@@ -5,6 +5,31 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-11-15
+
+### Added
+- ⚙️ Configurable rotation duration (500-10000ms, default 3000ms)
+- ⚙️ Configurable slide duration (100-5000ms, default 1000ms)
+- 🎨 Expandable sections for Color Settings and Actions in UI editor
+
+### Changed
+- 🎨 Increased lock icon size by 25% (radius 35 → 43.75)
+- ⏱️ Decoupled rotation (3s) and slide (1s) animation speeds
+- 🔄 Unknown state: 45° rotation with subtle breathing glow (30-60% opacity)
+- 🔄 Jammed state: 45° rotation with red breathing glow, removed wobble animation
+- 🎯 Card background now transparent, inherits from ha-card
+- 📐 Card now scales to fill container height like button-card
+
+### Fixed
+- 🔧 Color picker now uses text input for proper hex color support
+- 🔧 All expandable sections now work independently
+- 🔧 Card height and layout now properly fills available space
+
+### Technical
+- Animation durations now use CSS variables for dynamic updates
+- Card uses flexbox layout with height: 100% for proper scaling
+- Multiple accordion sections supported via querySelectorAll
+
 ## [1.2.0] - 2025-11-15
 
 ### Added

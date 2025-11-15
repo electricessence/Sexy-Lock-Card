@@ -437,8 +437,8 @@ class SexyLockCard extends HTMLElement {
     const svgSize = 120;
     const centerX = svgSize / 2; // 60
     const centerY = svgSize / 2; // 60
-    const radius = 35; // Smaller circle
-    const gap = 12; // Increased from 6 to 9 (50% wider)
+    const radius = 37; // Smaller circle
+    const gap = 14; // Increased from 6 to 9 (50% wider)
     
     // Calculate chord endpoints for the gap
     // The gap cuts through the circle horizontally
@@ -600,16 +600,25 @@ class SexyLockCard extends HTMLElement {
           --lock-jammed-color: ${this._config?.color_jammed || 'var(--warning-color, #ff5722)'};
           --lock-unknown-color: ${this._config?.color_unknown || 'var(--disabled-text-color, #9e9e9e)'};
           --lock-radius: 35;
+          --rotation-duration: ${this._config?.rotation_duration || 3000}ms;
+          --slide-duration: ${this._config?.slide_duration || 1000}ms;
+        }
+        
+        ha-card {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
         
         .lock-card {
           padding: 16px;
-          background: var(--ha-card-background, var(--card-background-color, white));
-          border-radius: var(--ha-card-border-radius, 12px);
-          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+          background: transparent;
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
         
         .lock-card:active {
@@ -620,8 +629,10 @@ class SexyLockCard extends HTMLElement {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           gap: 12px;
           overflow: visible;
+          flex: 1;
         }
         
         .lock-icon-container {
@@ -631,7 +642,7 @@ class SexyLockCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          background: var(--primary-background-color);
+          background: transparent;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -644,7 +655,7 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-group {
-          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform var(--rotation-duration) cubic-bezier(0.4, 0, 0.2, 1);
           transform-origin: center;
         }
         
@@ -662,7 +673,7 @@ class SexyLockCard extends HTMLElement {
         }
         
         .semi-circle {
-          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform var(--slide-duration) cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         /* Slide is controlled ONLY by locked vs unlocked state */
@@ -1067,36 +1078,37 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
-        <div class="section-header">Color Settings</div>
-        
-        <div class="option">
-          <label>Locked Color</label>
-          <div class="description">Color when lock is locked (default: green)</div>
-          <div class="color-locked-input"></div>
-        </div>
-        
-        <div class="option">
-          <label>Unlocked Color</label>
-          <div class="description">Color when lock is unlocked (default: red)</div>
-          <div class="color-unlocked-input"></div>
-        </div>
-        
-        <div class="option">
-          <label>Transitioning Color</label>
-          <div class="description">Color during locking/unlocking (default: orange)</div>
-          <div class="color-transitioning-input"></div>
-        </div>
-        
-        <div class="option">
-          <label>Jammed Color</label>
-          <div class="description">Color when lock is jammed (default: red-orange)</div>
-          <div class="color-jammed-input"></div>
-        </div>
-        
-        <div class="option">
-          <label>Unknown Color</label>
-          <div class="description">Color when state is unknown (default: gray)</div>
-          <div class="color-unknown-input"></div>
+        <div class="section-header expandable">Color Settings</div>
+        <div class="section-content">
+          <div class="option">
+            <label>Locked Color</label>
+            <div class="description">Color when lock is locked (default: green #4caf50)</div>
+            <div class="color-locked-input"></div>
+          </div>
+          
+          <div class="option">
+            <label>Unlocked Color</label>
+            <div class="description">Color when lock is unlocked (default: red #f44336)</div>
+            <div class="color-unlocked-input"></div>
+          </div>
+          
+          <div class="option">
+            <label>Transitioning Color</label>
+            <div class="description">Color during locking/unlocking (default: orange #ff9800)</div>
+            <div class="color-transitioning-input"></div>
+          </div>
+          
+          <div class="option">
+            <label>Jammed Color</label>
+            <div class="description">Color when lock is jammed (default: red-orange #ff5722)</div>
+            <div class="color-jammed-input"></div>
+          </div>
+          
+          <div class="option">
+            <label>Unknown Color</label>
+            <div class="description">Color when state is unknown (default: gray #9e9e9e)</div>
+            <div class="color-unknown-input"></div>
+          </div>
         </div>
         
         <div class="section-header">Animation Settings</div>
@@ -1110,22 +1122,41 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
-        <div class="section-header">Actions</div>
-        
-        <div class="option">
-          <label>Tap Action</label>
-          <div class="description">Action to perform when card is tapped</div>
-          <div class="tap-action-selector"></div>
-        </div>
-        
-        <div class="option">
-          <label>Hold Action</label>
-          <div class="description">Action to perform when card is held</div>
-          <div class="hold-action-selector"></div>
+        <div class="section-header expandable">Actions</div>
+        <div class="section-content">
+          <div class="option">
+            <label>Tap Action</label>
+            <div class="description">Action to perform when card is tapped</div>
+            <div class="tap-action-selector"></div>
+          </div>
+          
+          <div class="option">
+            <label>Hold Action</label>
+            <div class="description">Action to perform when card is held</div>
+            <div class="hold-action-selector"></div>
+          </div>
         </div>
         
         <div class="section-header expandable">Advanced Animation Settings</div>
         <div class="section-content">
+          <div class="option">
+            <label>Rotation Duration</label>
+            <div class="description">Duration for lock rotation animation</div>
+            <div class="number-input">
+              <div class="rotation-duration-input" style="flex: 1;"></div>
+              <span>ms</span>
+            </div>
+          </div>
+          
+          <div class="option">
+            <label>Slide Duration</label>
+            <div class="description">Duration for semi-circle slide animation</div>
+            <div class="number-input">
+              <div class="slide-duration-input" style="flex: 1;"></div>
+              <span>ms</span>
+            </div>
+          </div>
+          
           <div class="option">
             <label>Unlock Direction</label>
             <div class="description">Direction to rotate when unlocking</div>
@@ -1157,15 +1188,18 @@ class SexyLockCardEditor extends HTMLElement {
   }
   
   _setupAdvancedToggle() {
-    const advancedHeader = this.shadowRoot.querySelector('.section-header.expandable');
-    const advancedContent = this.shadowRoot.querySelector('.section-content');
+    const expandableHeaders = this.shadowRoot.querySelectorAll('.section-header.expandable');
     
-    if (advancedHeader && advancedContent) {
-      advancedHeader.addEventListener('click', () => {
-        advancedHeader.classList.toggle('expanded');
-        advancedContent.classList.toggle('expanded');
-      });
-    }
+    expandableHeaders.forEach((header, index) => {
+      const content = header.nextElementSibling;
+      
+      if (content && content.classList.contains('section-content')) {
+        header.addEventListener('click', () => {
+          header.classList.toggle('expanded');
+          content.classList.toggle('expanded');
+        });
+      }
+    });
   }
 
   _renderElements() {
@@ -1240,9 +1274,11 @@ class SexyLockCardEditor extends HTMLElement {
       const colorInput = document.createElement('ha-selector');
       colorInput.hass = this._hass;
       colorInput.selector = { 
-        color_rgb: { } 
+        text: { 
+          type: 'text'
+        } 
       };
-      colorInput.value = this._config[`color_${colorConfig.name}`] || '';
+      colorInput.value = this._config[`color_${colorConfig.name}`] || colorConfig.default;
       colorInput.label = colorConfig.label;
       colorInput.addEventListener('value-changed', (e) => {
         this._colorChanged(colorConfig.name, e);
@@ -1275,6 +1311,44 @@ class SexyLockCardEditor extends HTMLElement {
     holdActionContainer.appendChild(holdActionSelector);
     
     // Advanced settings
+    
+    // Rotation duration input
+    const rotationDurationInput = document.createElement('ha-selector');
+    rotationDurationInput.hass = this._hass;
+    rotationDurationInput.selector = { 
+      number: { 
+        min: 500, 
+        max: 10000, 
+        step: 100,
+        mode: 'box'
+      } 
+    };
+    rotationDurationInput.value = this._config.rotation_duration !== undefined ? this._config.rotation_duration : 3000;
+    rotationDurationInput.addEventListener('value-changed', this._rotationDurationChanged.bind(this));
+    
+    const rotationDurationContainer = this.shadowRoot.querySelector('.rotation-duration-input');
+    if (rotationDurationContainer) {
+      rotationDurationContainer.appendChild(rotationDurationInput);
+    }
+    
+    // Slide duration input
+    const slideDurationInput = document.createElement('ha-selector');
+    slideDurationInput.hass = this._hass;
+    slideDurationInput.selector = { 
+      number: { 
+        min: 100, 
+        max: 5000, 
+        step: 100,
+        mode: 'box'
+      } 
+    };
+    slideDurationInput.value = this._config.slide_duration !== undefined ? this._config.slide_duration : 1000;
+    slideDurationInput.addEventListener('value-changed', this._slideDurationChanged.bind(this));
+    
+    const slideDurationContainer = this.shadowRoot.querySelector('.slide-duration-input');
+    if (slideDurationContainer) {
+      slideDurationContainer.appendChild(slideDurationInput);
+    }
     
     // Unlock direction selector
     const unlockDirectionSelector = document.createElement('ha-selector');
@@ -1427,6 +1501,26 @@ class SexyLockCardEditor extends HTMLElement {
       this._updateConfig(newConfig);
     }
   }
+  
+  _rotationDurationChanged(ev) {
+    if (!this._config) return;
+    
+    const value = ev.detail.value;
+    if (value !== undefined && value >= 500 && value <= 10000) {
+      const newConfig = { ...this._config, rotation_duration: value };
+      this._updateConfig(newConfig);
+    }
+  }
+  
+  _slideDurationChanged(ev) {
+    if (!this._config) return;
+    
+    const value = ev.detail.value;
+    if (value !== undefined && value >= 100 && value <= 5000) {
+      const newConfig = { ...this._config, slide_duration: value };
+      this._updateConfig(newConfig);
+    }
+  }
 
   _updateConfig(newConfig) {
     this._config = newConfig;
@@ -1456,7 +1550,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.2.0 ',
+  '%c SEXY-LOCK-CARD %c 1.2.1 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
