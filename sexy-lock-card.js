@@ -362,7 +362,7 @@ class SexyLockCard extends HTMLElement {
     }
     
     // Apply rotation class
-    lockIcon.classList.remove('rotate-locked', 'rotate-unlocked');
+    lockIcon.classList.remove('rotate-locked', 'rotate-unlocked', 'rotate-45');
     if (isLockedRotation) {
       lockIcon.classList.add('rotate-locked');
     } else if (isUnlockedRotation) {
@@ -373,6 +373,10 @@ class SexyLockCard extends HTMLElement {
       lockIcon.classList.add('rotate-unlocked'); // Stay at 90° until locking/locked
     } else if (this._currentVisualState === 'unlock-requested') {
       lockIcon.classList.add('rotate-locked'); // Stay at 0° until unlocking/unlocked
+    }
+    // Unknown and jammed get 45° rotation
+    else if (['unknown', 'jammed', 'unavailable'].includes(this._currentVisualState)) {
+      lockIcon.classList.add('rotate-45');
     }
     
     // Apply slide class (completely independent, based on actual entity state)
@@ -653,6 +657,10 @@ class SexyLockCard extends HTMLElement {
           transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}90deg);
         }
         
+        .lock-icon.rotate-45 .lock-group {
+          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}45deg);
+        }
+        
         .semi-circle {
           transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -746,14 +754,14 @@ class SexyLockCard extends HTMLElement {
         .lock-icon-container.jammed {
           color: var(--lock-jammed-color);
           box-shadow: 0 0 0 5px var(--lock-jammed-color);
-          animation: shake 0.5s ease-in-out infinite;
+          animation: breathe 2s ease-in-out infinite;
         }
         
         .lock-icon-container.unknown,
         .lock-icon-container.unavailable {
           color: var(--lock-unknown-color);
           box-shadow: 0 0 0 5px var(--lock-unknown-color);
-          animation: breathe 2s ease-in-out infinite;
+          animation: breathe-subtle 2s ease-in-out infinite;
         }
         
         /* Animation for transitioning state */
@@ -797,6 +805,11 @@ class SexyLockCard extends HTMLElement {
         @keyframes breathe {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
+        }
+        
+        @keyframes breathe-subtle {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
         }
         
         .lock-name {
