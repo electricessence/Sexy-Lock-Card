@@ -528,11 +528,11 @@ class SexyLockCard extends HTMLElement {
       <svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="ring-gradient-requested">
-            <stop offset="0%" style="stop-color: rgba(255, 167, 38, 0.9); stop-opacity: 1" />
-            <stop offset="25%" style="stop-color: rgba(255, 255, 255, 0.8); stop-opacity: 1" />
-            <stop offset="50%" style="stop-color: rgba(255, 235, 59, 0.9); stop-opacity: 1" />
-            <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.8); stop-opacity: 1" />
-            <stop offset="100%" style="stop-color: rgba(255, 167, 38, 0.9); stop-opacity: 1" />
+            <stop offset="0%" style="stop-color: rgba(255, 255, 255, 0.2); stop-opacity: 1" />
+            <stop offset="25%" style="stop-color: rgba(255, 255, 255, 0.5); stop-opacity: 1" />
+            <stop offset="50%" style="stop-color: rgba(255, 255, 255, 0.7); stop-opacity: 1" />
+            <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.5); stop-opacity: 1" />
+            <stop offset="100%" style="stop-color: rgba(255, 255, 255, 0.2); stop-opacity: 1" />
           </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
