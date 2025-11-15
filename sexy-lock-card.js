@@ -713,13 +713,7 @@ class SexyLockCard extends HTMLElement {
           box-sizing: border-box;
           position: relative;
           padding: var(--ha-card-padding, 4% 0);
-          --ha-ripple-color: var(
-            --lock-highlight-color,
-            var(
-              --lock-locked-color,
-              var(--state-icon-color, var(--primary-color))
-            )
-          );
+          --ha-ripple-color: var(--state-color, var(--state-icon-color, var(--primary-color)));
           --ha-ripple-hover-opacity: 0.06;
           --ha-ripple-pressed-opacity: 0.14;
         }
