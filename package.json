@@ -1,0 +1,24 @@
+{
+  "name": "sexy-lock-card",
+  "version": "1.0.0",
+  "description": "Animated lock card for Home Assistant with smooth state transitions",
+  "main": "sexy-lock-card.js",
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "lock",
+    "animation",
+    "smart-home"
+  ],
+  "author": "Sexy Lock Card Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/sexy-lock-card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/sexy-lock-card/issues"
+  },
+  "homepage": "https://github.com/yourusername/sexy-lock-card#readme"
+}

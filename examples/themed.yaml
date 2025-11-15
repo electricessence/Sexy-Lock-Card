@@ -1,0 +1,30 @@
+# Custom Themed Lock Card
+# Using card-mod to customize colors (requires card-mod custom card)
+
+type: custom:sexy-lock-card
+entity: lock.front_door
+name: Custom Colors
+card_mod:
+  style: |
+    :host {
+      --lock-locked-color: #00ff88;
+      --lock-unlocked-color: #ff4444;
+      --lock-transitioning-color: #ffaa00;
+      --lock-jammed-color: #ff3300;
+      --lock-unknown-color: #666666;
+    }
+
+---
+
+# Without card-mod, you can set colors in your theme
+# Add this to your theme configuration (themes.yaml):
+
+sexy-lock-theme:
+  # Other theme settings...
+  
+  # Sexy Lock Card colors
+  lock-locked-color: '#4caf50'
+  lock-unlocked-color: '#f44336'
+  lock-transitioning-color: '#ff9800'
+  lock-jammed-color: '#ff5722'
+  lock-unknown-color: '#9e9e9e'
