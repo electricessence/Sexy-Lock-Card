@@ -1025,11 +1025,17 @@ class SexyLockCardEditor extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
+    this._isRendered = false;
+    this._colorInputs = {};
   }
 
   setConfig(config) {
     this._config = { ...config };
-    this._render();
+    if (!this._isRendered) {
+      this._render();
+    } else {
+      this._updateFormValues();
+    }
   }
 
   set hass(hass) {
@@ -1041,6 +1047,9 @@ class SexyLockCardEditor extends HTMLElement {
       selectors.forEach(selector => {
         selector.hass = hass;
       });
+    }
+    if (this._isRendered) {
+      this._updateFormValues();
     }
   }
 
@@ -1295,6 +1304,8 @@ class SexyLockCardEditor extends HTMLElement {
 
     this._renderElements();
     this._setupAdvancedToggle();
+    this._isRendered = true;
+    this._updateFormValues();
   }
   
   _setupAdvancedToggle() {
@@ -1313,8 +1324,6 @@ class SexyLockCardEditor extends HTMLElement {
   }
 
   _renderElements() {
-    if (!this._hass) return;
-
     // Entity selector
     const entitySelector = document.createElement('ha-selector');
     entitySelector.hass = this._hass;
@@ -1322,6 +1331,7 @@ class SexyLockCardEditor extends HTMLElement {
     entitySelector.value = this._config.entity || '';
     entitySelector.label = 'Entity';
     entitySelector.addEventListener('value-changed', this._entityChanged.bind(this));
+    this._entitySelector = entitySelector;
     
     const entityContainer = this.shadowRoot.querySelector('.option');
     entityContainer.appendChild(entitySelector);
@@ -1333,6 +1343,7 @@ class SexyLockCardEditor extends HTMLElement {
     nameInput.value = this._config.name || '';
     nameInput.label = 'Name';
     nameInput.addEventListener('value-changed', this._nameChanged.bind(this));
+    this._nameInput = nameInput;
     
     const nameContainer = this.shadowRoot.querySelector('.name-input');
     nameContainer.appendChild(nameInput);
@@ -1341,6 +1352,7 @@ class SexyLockCardEditor extends HTMLElement {
     const showNameSwitch = document.createElement('ha-switch');
     showNameSwitch.checked = this._config.show_name !== false;
     showNameSwitch.addEventListener('change', this._showNameChanged.bind(this));
+    this._showNameSwitch = showNameSwitch;
     
     const showNameContainer = this.shadowRoot.querySelector('.show-name-switch');
     showNameContainer.appendChild(showNameSwitch);
@@ -1349,6 +1361,7 @@ class SexyLockCardEditor extends HTMLElement {
     const showStateSwitch = document.createElement('ha-switch');
     showStateSwitch.checked = this._config.show_state !== false;
     showStateSwitch.addEventListener('change', this._showStateChanged.bind(this));
+    this._showStateSwitch = showStateSwitch;
     
     const showStateContainer = this.shadowRoot.querySelector('.show-state-switch');
     showStateContainer.appendChild(showStateSwitch);
@@ -1367,6 +1380,7 @@ class SexyLockCardEditor extends HTMLElement {
     };
     animationInput.value = this._config.animation_duration || 400;
     animationInput.addEventListener('value-changed', this._animationDurationChanged.bind(this));
+    this._animationDurationInput = animationInput;
     
     const animationContainer = this.shadowRoot.querySelector('.animation-input');
     animationContainer.appendChild(animationInput);
@@ -1393,6 +1407,7 @@ class SexyLockCardEditor extends HTMLElement {
       colorInput.addEventListener('value-changed', (e) => {
         this._colorChanged(colorConfig.name, e);
       });
+      this._colorInputs[colorConfig.name] = colorInput;
       
       const colorContainer = this.shadowRoot.querySelector(`.color-${colorConfig.name}-input`);
       if (colorContainer) {
@@ -1406,6 +1421,7 @@ class SexyLockCardEditor extends HTMLElement {
     tapActionSelector.selector = { ui_action: { } };
     tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
     tapActionSelector.addEventListener('value-changed', this._tapActionChanged.bind(this));
+    this._tapActionSelector = tapActionSelector;
     
     const tapActionContainer = this.shadowRoot.querySelector('.tap-action-selector');
     tapActionContainer.appendChild(tapActionSelector);
@@ -1416,6 +1432,7 @@ class SexyLockCardEditor extends HTMLElement {
     holdActionSelector.selector = { ui_action: { } };
     holdActionSelector.value = this._config.hold_action || { action: 'more-info' };
     holdActionSelector.addEventListener('value-changed', this._holdActionChanged.bind(this));
+    this._holdActionSelector = holdActionSelector;
     
     const holdActionContainer = this.shadowRoot.querySelector('.hold-action-selector');
     holdActionContainer.appendChild(holdActionSelector);
@@ -1435,6 +1452,7 @@ class SexyLockCardEditor extends HTMLElement {
     };
     rotationDurationInput.value = this._config.rotation_duration !== undefined ? this._config.rotation_duration : 3000;
     rotationDurationInput.addEventListener('value-changed', this._rotationDurationChanged.bind(this));
+    this._rotationDurationInput = rotationDurationInput;
     
     const rotationDurationContainer = this.shadowRoot.querySelector('.rotation-duration-input');
     if (rotationDurationContainer) {
@@ -1454,6 +1472,7 @@ class SexyLockCardEditor extends HTMLElement {
     };
     slideDurationInput.value = this._config.slide_duration !== undefined ? this._config.slide_duration : 1000;
     slideDurationInput.addEventListener('value-changed', this._slideDurationChanged.bind(this));
+    this._slideDurationInput = slideDurationInput;
     
     const slideDurationContainer = this.shadowRoot.querySelector('.slide-duration-input');
     if (slideDurationContainer) {
@@ -1473,6 +1492,7 @@ class SexyLockCardEditor extends HTMLElement {
     };
     unlockDirectionSelector.value = this._config.unlock_direction || 'counterclockwise';
     unlockDirectionSelector.addEventListener('value-changed', this._unlockDirectionChanged.bind(this));
+    this._unlockDirectionSelector = unlockDirectionSelector;
     
     const unlockDirectionContainer = this.shadowRoot.querySelector('.unlock-direction-selector');
     unlockDirectionContainer.appendChild(unlockDirectionSelector);
@@ -1490,6 +1510,7 @@ class SexyLockCardEditor extends HTMLElement {
     };
     offsetSlideInput.value = this._config.offset_slide !== undefined ? this._config.offset_slide : 0.3;
     offsetSlideInput.addEventListener('value-changed', this._offsetSlideChanged.bind(this));
+    this._offsetSlideInput = offsetSlideInput;
     
     const offsetSlideContainer = this.shadowRoot.querySelector('.offset-slide-input');
     offsetSlideContainer.appendChild(offsetSlideInput);
@@ -1507,9 +1528,62 @@ class SexyLockCardEditor extends HTMLElement {
     };
     gradientSpeedInput.value = this._config.gradient_speed !== undefined ? this._config.gradient_speed : 2;
     gradientSpeedInput.addEventListener('value-changed', this._gradientSpeedChanged.bind(this));
+    this._gradientSpeedInput = gradientSpeedInput;
     
     const gradientSpeedContainer = this.shadowRoot.querySelector('.gradient-speed-input');
     gradientSpeedContainer.appendChild(gradientSpeedInput);
+  }
+
+  _updateFormValues() {
+    if (!this._config) return;
+    if (this._entitySelector) {
+      this._entitySelector.value = this._config.entity || '';
+    }
+    if (this._nameInput) {
+      this._nameInput.value = this._config.name || '';
+    }
+    if (this._showNameSwitch) {
+      this._showNameSwitch.checked = this._config.show_name !== false;
+    }
+    if (this._showStateSwitch) {
+      this._showStateSwitch.checked = this._config.show_state !== false;
+    }
+    if (this._animationDurationInput) {
+      this._animationDurationInput.value = this._config.animation_duration || 400;
+    }
+    if (this._rotationDurationInput) {
+      this._rotationDurationInput.value = this._config.rotation_duration !== undefined ? this._config.rotation_duration : 3000;
+    }
+    if (this._slideDurationInput) {
+      this._slideDurationInput.value = this._config.slide_duration !== undefined ? this._config.slide_duration : 1000;
+    }
+    if (this._unlockDirectionSelector) {
+      this._unlockDirectionSelector.value = this._config.unlock_direction || 'counterclockwise';
+    }
+    if (this._offsetSlideInput) {
+      this._offsetSlideInput.value = this._config.offset_slide !== undefined ? this._config.offset_slide : 0.3;
+    }
+    if (this._gradientSpeedInput) {
+      this._gradientSpeedInput.value = this._config.gradient_speed !== undefined ? this._config.gradient_speed : 2;
+    }
+    if (this._tapActionSelector) {
+      this._tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
+    }
+    if (this._holdActionSelector) {
+      this._holdActionSelector.value = this._config.hold_action || { action: 'more-info' };
+    }
+    Object.entries(this._colorInputs).forEach(([key, input]) => {
+      if (input) {
+        const defaults = {
+          locked: '#4caf50',
+          unlocked: '#f44336',
+          transitioning: '#ff9800',
+          jammed: '#ff5722',
+          unknown: '#9e9e9e',
+        };
+        input.value = this._config[`color_${key}`] || defaults[key];
+      }
+    });
   }
 
   _entityChanged(ev) {
