@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sexy Lock Card - Local Testing</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      margin-bottom: 30px;
+    }
+    
+    .test-area {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .card-wrapper {
+      background: #161b22;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+    }
+    
+    sexy-lock-card {
+      display: block;
+    }
+    
+    .controls {
+      background: #161b22;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      margin-top: 20px;
+    }
+    
+    .controls h2 {
+      margin-top: 0;
+    }
+    
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: #238636;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    button:hover {
+      background: #2ea043;
+    }
+    
+    button.secondary {
+      background: #1f6feb;
+    }
+    
+    button.secondary:hover {
+      background: #388bfd;
+    }
+    
+    .state-display {
+      font-family: 'Courier New', monospace;
+      background: #0d1117;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+      border: 1px solid #30363d;
+    }
+    
+    .state-display pre {
+      margin: 0;
+      color: #58a6ff;
+    }
+    
+    .info {
+      background: #1f2937;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+      border-left: 3px solid #58a6ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Sexy Lock Card - Local Testing</h1>
+    
+    <div class="test-area">
+      <div class="card-wrapper">
+        <h3>Card Instance</h3>
+        <sexy-lock-card id="testCard"></sexy-lock-card>
+      </div>
+      
+      <div class="card-wrapper">
+        <h3>State Information</h3>
+        <div class="state-display">
+          <pre id="stateInfo">Entity State: unlocked
+Visual State: unlocked
+User Action: none
+Animation Phase: idle</pre>
+        </div>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <h2>Test Controls</h2>
+      
+      <h3>User Actions (Simulate Clicks)</h3>
+      <div class="button-group">
+        <button onclick="simulateTap()">Tap Card (Toggle)</button>
+        <button onclick="simulateHold()" class="secondary">Hold Card (More Info)</button>
+      </div>
+      
+      <h3>Entity State Changes (Simulate Lock Reporting)</h3>
+      <div class="button-group">
+        <button onclick="setEntityState('unlocked')" style="background: #f44336;">unlocked</button>
+        <button onclick="setEntityState('locking')" style="background: #ff9800;">locking</button>
+        <button onclick="setEntityState('locked')" style="background: #4caf50;">locked</button>
+        <button onclick="setEntityState('unlocking')" style="background: #ff9800;">unlocking</button>
+        <button onclick="setEntityState('jammed')" style="background: #ff5722;">jammed</button>
+        <button onclick="setEntityState('unknown')" style="background: #9e9e9e;">unknown</button>
+      </div>
+      
+      <h3>Visual States (For Testing Animations)</h3>
+      <div class="button-group">
+        <button onclick="setVisualState('lock-requested')" style="background: #ff9800;">lock-requested</button>
+        <button onclick="setVisualState('unlock-requested')" style="background: #ff9800;">unlock-requested</button>
+      </div>
+      
+      <h3>Test Scenarios</h3>
+      <div class="button-group">
+        <button onclick="testFullLockCycle()" class="secondary">Full Lock Cycle</button>
+        <button onclick="testBasicLock()" class="secondary">Basic Lock (no transitional)</button>
+        <button onclick="testManualChange()" class="secondary">Manual Lock Change</button>
+      </div>
+      
+      <div class="info">
+        <strong>How to test:</strong><br>
+        1. Click "Tap Card" to simulate user clicking the lock<br>
+        2. Use entity state buttons to simulate what the lock reports<br>
+        3. Watch the visual states and animations<br>
+        4. Try test scenarios for common flows
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    // Import the card
+    import './sexy-lock-card.js';
+    
+    // Mock Home Assistant
+    window.mockHass = {
+      states: {
+        'lock.test_lock': {
+          entity_id: 'lock.test_lock',
+          state: 'unlocked',
+          attributes: {
+            friendly_name: 'Test Lock'
+          }
+        }
+      },
+      callService: function(domain, service, data) {
+        console.log(`Service called: ${domain}.${service}`, data);
+        updateStateInfo();
+      }
+    };
+    
+    // Initialize card
+    const card = document.getElementById('testCard');
+    card.setConfig({
+      entity: 'lock.test_lock',
+      name: 'Test Lock',
+      show_name: true,
+      show_state: true,
+      animation_duration: 400
+    });
+    card.hass = window.mockHass;
+    
+    // Expose functions globally
+    window.simulateTap = function() {
+      console.log('Simulating tap...');
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      card.shadowRoot.querySelector('.lock-card').dispatchEvent(clickEvent);
+      updateStateInfo();
+    };
+    
+    window.simulateHold = function() {
+      console.log('Simulating hold...');
+      updateStateInfo();
+    };
+    
+    window.setEntityState = function(state) {
+      console.log(`Setting entity state to: ${state}`);
+      window.mockHass.states['lock.test_lock'].state = state;
+      
+      // Trigger state change
+      const oldHass = card.hass;
+      card.hass = { ...window.mockHass };
+      
+      updateStateInfo();
+    };
+    
+    window.setVisualState = function(state) {
+      console.log(`Setting visual state to: ${state}`);
+      // Directly set the visual state for testing animations
+      card._currentVisualState = state;
+      card._updateVisuals();
+      updateStateInfo();
+    };
+    
+    window.testFullLockCycle = async function() {
+      console.log('Testing full lock cycle...');
+      
+      // Start unlocked
+      setEntityState('unlocked');
+      await sleep(500);
+      
+      // User taps (will show lock-requested)
+      simulateTap();
+      await sleep(400);
+      
+      // Lock reports locking
+      setEntityState('locking');
+      await sleep(800);
+      
+      // Lock reports locked
+      setEntityState('locked');
+      await sleep(1000);
+      
+      // User taps again (will show unlock-requested)
+      simulateTap();
+      await sleep(400);
+      
+      // Lock reports unlocking
+      setEntityState('unlocking');
+      await sleep(800);
+      
+      // Lock reports unlocked
+      setEntityState('unlocked');
+    };
+    
+    window.testBasicLock = async function() {
+      console.log('Testing basic lock (no transitional states)...');
+      
+      // Start unlocked
+      setEntityState('unlocked');
+      await sleep(500);
+      
+      // User taps (will show lock-requested, then animate)
+      simulateTap();
+      await sleep(400);
+      
+      // Lock instantly reports locked (no "locking" state)
+      setEntityState('locked');
+      await sleep(1000);
+      
+      // User taps again
+      simulateTap();
+      await sleep(400);
+      
+      // Lock instantly reports unlocked
+      setEntityState('unlocked');
+    };
+    
+    window.testManualChange = async function() {
+      console.log('Testing manual change...');
+      
+      setEntityState('locked');
+      await sleep(500);
+      
+      // Manually changed to unlocked (no user action)
+      setEntityState('unlocked');
+    };
+    
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    function updateStateInfo() {
+      const entity = window.mockHass.states['lock.test_lock'];
+      const stateInfo = document.getElementById('stateInfo');
+      
+      // Try to get internal state from card
+      const visualState = card._currentVisualState || 'unknown';
+      const animationPhase = card._animationPhase || 'unknown';
+      const userAction = card._userInitiated ? 'user initiated' : 'external';
+      
+      stateInfo.textContent = `Entity State: ${entity.state}
+Visual State: ${visualState}
+Animation Phase: ${animationPhase}
+User Action: ${userAction}
+Last Updated: ${new Date().toLocaleTimeString()}`;
+    }
+    
+    // Initial state update
+    updateStateInfo();
+    
+    // Update state info every second
+    setInterval(updateStateInfo, 1000);
+  </script>
+</body>
+</html>

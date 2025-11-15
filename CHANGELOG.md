@@ -5,6 +5,31 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-11-15
+
+### Added
+- 🎨 **Advanced Animation Settings** - Expandable section in UI editor for power users
+- 🌀 **Rotating gradient effect** on ring during lock-requested/unlock-requested states
+- ⚙️ Configurable gradient rotation speed (0.5-10 seconds)
+- 🔄 Configurable unlock direction (clockwise/counterclockwise)
+- 📏 Adjustable slide offset (-1.0 to 1.0, supports negative values)
+- 🎭 Refined animation choreography:
+  - Locking: Semi-circles slide together early, then rotate
+  - Unlocking: Rotate first, then semi-circles slide apart
+- 🎯 Smart state transitions skip intermediate states when not user-initiated
+
+### Changed
+- ⏱️ Default animation duration increased to 2000ms for smoother visual effect
+- 🎨 Improved color transitions during state changes
+- 🔄 Decoupled rotation timing from slide timing for more natural motion
+- 💫 Gradient overlay fades smoothly to prevent visible animation stops
+
+### Technical
+- Rotation only triggered on locking/unlocking/locked/unlocked states
+- lock-requested maintains unlocked rotation until backend confirms
+- unlock-requested maintains locked rotation until backend confirms
+- Gradient speed now configurable via `gradient_speed` config parameter
+
 ## [1.1.1] - 2025-11-14
 
 ### Fixed

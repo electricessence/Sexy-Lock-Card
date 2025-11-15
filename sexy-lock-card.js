@@ -19,6 +19,8 @@ class SexyLockCard extends HTMLElement {
     this._animationPhase = 'idle'; // idle, transitioning, complete
     this._animationTimer = null;
     this._lastEntityState = null;
+    this._userInitiated = false; // Track if state change was user-initiated
+    this._pendingUserAction = null; // 'lock' or 'unlock'
   }
 
   /**
@@ -34,7 +36,15 @@ class SexyLockCard extends HTMLElement {
       name: config.name || null,
       show_name: config.show_name !== false,
       show_state: config.show_state !== false,
-      animation_duration: config.animation_duration || 400,
+      animation_duration: config.animation_duration || 2000,
+      unlock_direction: config.unlock_direction || 'counterclockwise', // counterclockwise or clockwise
+      offset_slide: config.offset_slide !== undefined ? config.offset_slide : 0.3, // 0 to 1.0, proportion of radius
+      // Color configuration
+      color_locked: config.color_locked || null,
+      color_unlocked: config.color_unlocked || null,
+      color_transitioning: config.color_transitioning || null,
+      color_jammed: config.color_jammed || null,
+      color_unknown: config.color_unknown || null,
       tap_action: config.tap_action || { action: 'toggle' },
       hold_action: config.hold_action || { action: 'more-info' },
     };
@@ -108,15 +118,18 @@ class SexyLockCard extends HTMLElement {
 
   /**
    * Normalize entity states to our internal state model
+   * State cycle: unlocked → lock-requested → locking → locked → unlock-requested → unlocking → unlocked
    */
   _normalizeState(state) {
     const normalized = state.toLowerCase();
     
-    // Map all possible states
+    // Map all possible states (entity + UI states)
     switch (normalized) {
-      case 'locked':
-      case 'locking':
       case 'unlocked':
+      case 'lock-requested':  // UI state when user clicks to lock
+      case 'locking':
+      case 'locked':
+      case 'unlock-requested':  // UI state when user clicks to unlock
       case 'unlocking':
       case 'jammed':
       case 'unknown':
@@ -140,13 +153,23 @@ class SexyLockCard extends HTMLElement {
       this._animationTimer = null;
     }
     
-    // Determine if we need to animate through a midpoint
-    const needsMidpoint = this._shouldAnimateThroughMidpoint(from, to);
+    // If there's a pending user action and entity confirms it, clear the flag
+    if (this._pendingUserAction) {
+      if ((this._pendingUserAction === 'lock' && (to === 'locking' || to === 'locked')) ||
+          (this._pendingUserAction === 'unlock' && (to === 'unlocking' || to === 'unlocked'))) {
+        this._userInitiated = false;
+        this._pendingUserAction = null;
+      }
+    }
     
-    if (needsMidpoint) {
-      this._animateWithMidpoint(from, to);
+    // Get the state path from current to target
+    const statePath = this._getStatePath(from, to);
+    
+    if (statePath.length > 1) {
+      // Animate through each state in the path
+      this._animateThroughPath(statePath);
     } else {
-      // Direct transition (e.g., locked -> locking, or unlocked -> unlocking)
+      // Direct transition
       this._currentVisualState = to;
       this._animationPhase = 'idle';
       this._updateVisuals();
@@ -154,62 +177,127 @@ class SexyLockCard extends HTMLElement {
   }
 
   /**
-   * Determine if we need to animate through a transitional midpoint state
+   * Get the state path from current state to target state
+   * State cycle: unlocked → lock-requested → locking → locked → unlock-requested → unlocking → unlocked
    */
-  _shouldAnimateThroughMidpoint(from, to) {
-    // Transitions that require animation through midpoint
-    const transitionMap = {
-      'locked': ['unlocked', 'unlocking'],
-      'unlocked': ['locked', 'locking'],
-      'locking': ['unlocked', 'unlocking'],
-      'unlocking': ['locked', 'locking'],
-    };
+  _getStatePath(from, to) {
+    // Define the full state cycle
+    const stateOrder = [
+      'unlocked',
+      'lock-requested',
+      'locking', 
+      'locked',
+      'unlock-requested',
+      'unlocking'
+    ];
     
-    return transitionMap[from]?.includes(to) || false;
+    // Special states that don't participate in the cycle
+    if (to === 'jammed' || to === 'unknown' || to === 'unavailable') {
+      return [to];
+    }
+    
+    // Find positions in the cycle
+    const fromIndex = stateOrder.indexOf(from);
+    const toIndex = stateOrder.indexOf(to);
+    
+    // If either state is not in the cycle, do direct transition
+    if (fromIndex === -1 || toIndex === -1) {
+      return [to];
+    }
+    
+    // If already at target, no transition needed
+    if (fromIndex === toIndex) {
+      return [];
+    }
+    
+    // Skip lock-requested/unlock-requested when not user-initiated
+    // If backend goes directly to locking/unlocking, don't show requested state
+    if (!this._userInitiated) {
+      if (from === 'unlocked' && to === 'locking') {
+        return [to]; // Direct jump, skip lock-requested
+      }
+      if (from === 'locked' && to === 'unlocking') {
+        return [to]; // Direct jump, skip unlock-requested
+      }
+    }
+    
+    // Calculate the path
+    const path = [];
+    let currentIndex = fromIndex;
+    
+    // Calculate distances for both directions
+    let forwardDistance, backwardDistance;
+    
+    if (toIndex > fromIndex) {
+      forwardDistance = toIndex - fromIndex;
+      backwardDistance = (fromIndex + stateOrder.length - toIndex);
+    } else {
+      forwardDistance = (toIndex + stateOrder.length - fromIndex);
+      backwardDistance = fromIndex - toIndex;
+    }
+    
+    // Choose the shorter path
+    const goForward = forwardDistance <= backwardDistance;
+    
+    if (goForward) {
+      // Move forward through states
+      while (currentIndex !== toIndex) {
+        currentIndex = (currentIndex + 1) % stateOrder.length;
+        path.push(stateOrder[currentIndex]);
+      }
+    } else {
+      // Move backward through states
+      while (currentIndex !== toIndex) {
+        currentIndex = (currentIndex - 1 + stateOrder.length) % stateOrder.length;
+        path.push(stateOrder[currentIndex]);
+      }
+    }
+    
+    return path;
   }
 
   /**
-   * Animate through a midpoint state for smooth transitions
+   * Animate through a path of states
    */
-  _animateWithMidpoint(from, to) {
+  _animateThroughPath(path) {
+    if (path.length === 0) return;
+    
     const duration = this._config.animation_duration;
-    const halfDuration = duration / 2;
+    const stepDuration = duration / path.length;
     
-    // Determine midpoint state
-    const midpoint = this._getMidpointState(from, to);
+    let currentStep = 0;
     
-    // Phase 1: Transition to midpoint
-    this._animationPhase = 'transitioning';
-    this._currentVisualState = midpoint;
-    this._updateVisuals();
-    
-    // Phase 2: After half duration, transition to final state
-    this._animationTimer = setTimeout(() => {
-      this._currentVisualState = to;
-      this._animationPhase = 'complete';
+    const animateNextStep = () => {
+      if (currentStep >= path.length) {
+        this._animationPhase = 'idle';
+        this._userInitiated = false;
+        this._pendingUserAction = null;
+        this._updateVisuals();
+        return;
+      }
+      
+      this._currentVisualState = path[currentStep];
+      this._animationPhase = currentStep < path.length - 1 ? 'transitioning' : 'complete';
       this._updateVisuals();
       
-      // Mark as idle after animation completes
-      this._animationTimer = setTimeout(() => {
-        this._animationPhase = 'idle';
-        this._updateVisuals();
-      }, halfDuration);
-    }, halfDuration);
-  }
-
-  /**
-   * Get the visual midpoint state for a transition
-   */
-  _getMidpointState(from, to) {
-    // Determine direction
-    const isLocking = to === 'locked' || to === 'locking';
-    const isUnlocking = to === 'unlocked' || to === 'unlocking';
+      currentStep++;
+      
+      if (currentStep < path.length) {
+        this._animationTimer = setTimeout(animateNextStep, stepDuration);
+      } else {
+        // Final state reached
+        this._animationTimer = setTimeout(() => {
+          this._animationPhase = 'idle';
+          this._userInitiated = false;
+          this._pendingUserAction = null;
+          this._updateVisuals();
+        }, stepDuration);
+      }
+    };
     
-    if (isLocking) return 'locking';
-    if (isUnlocking) return 'unlocking';
-    
-    // Fallback
-    return 'transitioning';
+    // Start animation
+    this._animationPhase = 'transitioning';
+    animateNextStep();
   }
 
   /**
@@ -239,21 +327,64 @@ class SexyLockCard extends HTMLElement {
     if (!this.shadowRoot) return;
     
     const iconContainer = this.shadowRoot.querySelector('.lock-icon-container');
-    const icon = this.shadowRoot.querySelector('.lock-icon');
+    const lockIcon = this.shadowRoot.querySelector('.lock-icon');
     
-    if (!iconContainer || !icon) return;
+    if (!iconContainer || !lockIcon) return;
     
     // Remove all state classes
     iconContainer.classList.remove(
       'locked', 'unlocked', 'locking', 'unlocking', 
+      'lock-requested', 'unlock-requested',
       'jammed', 'unknown', 'transitioning'
     );
     
     // Add current visual state class
     iconContainer.classList.add(this._currentVisualState);
     
-    // Update icon based on state
-    icon.innerHTML = this._getIconSVG(this._currentVisualState);
+    // NEW LOGIC: Rotation waits for locking/unlocking/locked/unlocked
+    // lock-requested doesn't rotate yet, unlock-requested doesn't rotate yet
+    const isLockedRotation = ['locked', 'locking'].includes(this._currentVisualState);
+    const isUnlockedRotation = ['unlocked', 'unlocking'].includes(this._currentVisualState);
+    
+    // NEW LOGIC: Slide happens on lock-requested (slides together early)
+    // or ONLY on unlocked (slides apart late)
+    const entity = this._hass?.states[this._config.entity];
+    const entityState = entity?.state;
+    
+    let slideClass = null;
+    // Slide together when lock-requested, locking, locked, unlock-requested, or unlocking
+    if (['lock-requested', 'locking', 'locked', 'unlock-requested', 'unlocking'].includes(this._currentVisualState) || entityState === 'locked') {
+      slideClass = 'slide-locked';
+    } 
+    // Slide apart ONLY when unlocked
+    else if (this._currentVisualState === 'unlocked' || entityState === 'unlocked') {
+      slideClass = 'slide-unlocked';
+    }
+    
+    // Apply rotation class
+    lockIcon.classList.remove('rotate-locked', 'rotate-unlocked');
+    if (isLockedRotation) {
+      lockIcon.classList.add('rotate-locked');
+    } else if (isUnlockedRotation) {
+      lockIcon.classList.add('rotate-unlocked');
+    }
+    // lock-requested keeps unlocked rotation, unlock-requested keeps locked rotation
+    else if (this._currentVisualState === 'lock-requested') {
+      lockIcon.classList.add('rotate-unlocked'); // Stay at 90° until locking/locked
+    } else if (this._currentVisualState === 'unlock-requested') {
+      lockIcon.classList.add('rotate-locked'); // Stay at 0° until unlocking/unlocked
+    }
+    
+    // Apply slide class (completely independent, based on actual entity state)
+    // Only update if we have a definitive locked or unlocked state
+    if (slideClass) {
+      lockIcon.classList.remove('slide-locked', 'slide-unlocked');
+      lockIcon.classList.add(slideClass);
+    }
+    // Otherwise, keep whatever slide position we had before
+    
+    // Don't regenerate SVG - it breaks CSS transitions!
+    // SVG is created once in render()
     
     // Apply animation class if transitioning
     if (this._animationPhase === 'transitioning') {
@@ -264,13 +395,25 @@ class SexyLockCard extends HTMLElement {
   }
 
   /**
+   * Update the lock SVG based on current state
+   */
+  _updateLockSVG() {
+    const lockIcon = this.shadowRoot.querySelector('.lock-icon');
+    if (!lockIcon) return;
+    
+    lockIcon.innerHTML = this._getIconSVG(this._currentVisualState);
+  }
+
+  /**
    * Get human-readable state label
    */
   _getStateLabel(state) {
     const labels = {
       'locked': 'Locked',
       'unlocked': 'Unlocked',
+      'lock-requested': 'Locking...',
       'locking': 'Locking...',
+      'unlock-requested': 'Unlocking...',
       'unlocking': 'Unlocking...',
       'jammed': 'Jammed',
       'unknown': 'Unknown',
@@ -284,33 +427,79 @@ class SexyLockCard extends HTMLElement {
    * Get SVG icon for the current state
    */
   _getIconSVG(state) {
-    // Lock icon SVG paths
-    const lockBody = '<rect x="8" y="11" width="8" height="9" rx="1" />';
-    const lockShackle = '<path d="M12 3C10.34 3 9 4.34 9 6v3h6V6c0-1.66-1.34-3-3-3z" />';
-    const lockShackleOpen = '<path d="M12 3C10.34 3 9 4.34 9 6v1h6V6c0-1.66-1.34-3-3-3z" transform="translate(2, 0)" />';
-    const lockShackleHalf = '<path d="M12 3C10.34 3 9 4.34 9 6v2h6V6c0-1.66-1.34-3-3-3z" transform="translate(1, 0) rotate(-15 12 8)" />';
+    // Circle with a strip cut out - like a crescent/segment
+    // Each piece is LESS than a semicircle
+    // SVG is sized to fill the entire container (120px)
+    const svgSize = 120;
+    const centerX = svgSize / 2; // 60
+    const centerY = svgSize / 2; // 60
+    const radius = 35; // Smaller circle
+    const gap = 12; // Increased from 6 to 9 (50% wider)
     
-    switch (state) {
-      case 'locked':
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackle}</svg>`;
-      
-      case 'unlocked':
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackleOpen}</svg>`;
-      
-      case 'locking':
-      case 'unlocking':
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackleHalf}</svg>`;
-      
-      case 'jammed':
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackle}<text x="12" y="17" text-anchor="middle" font-size="8">!</text></svg>`;
-      
-      case 'unknown':
-      case 'unavailable':
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackle}<text x="12" y="17" text-anchor="middle" font-size="8">?</text></svg>`;
-      
-      default:
-        return `<svg viewBox="0 0 24 24">${lockBody}${lockShackle}</svg>`;
+    // Calculate chord endpoints for the gap
+    // The gap cuts through the circle horizontally
+    const halfGap = gap / 2;
+    
+    // Calculate where the chord intersects the circle
+    // Using Pythagorean theorem: x^2 + y^2 = r^2
+    // We know y (halfGap), solve for x
+    const chordX = Math.sqrt(radius * radius - halfGap * halfGap);
+    
+    // Top piece: less than a semicircle - the arc above the cut
+    // Goes from left edge of gap, around the top, to right edge of gap
+    const semiCircle1 = `
+      <path class="semi-circle semi-circle-1" 
+            d="M ${centerX - chordX} ${centerY - halfGap}
+               A ${radius} ${radius} 0 0 1 ${centerX + chordX} ${centerY - halfGap}
+               L ${centerX - chordX} ${centerY - halfGap}
+               Z" 
+            fill="currentColor" 
+            stroke="none"/>
+    `;
+    
+    // Bottom piece: the arc below the cut
+    const semiCircle2 = `
+      <path class="semi-circle semi-circle-2" 
+            d="M ${centerX - chordX} ${centerY + halfGap}
+               A ${radius} ${radius} 0 0 0 ${centerX + chordX} ${centerY + halfGap}
+               L ${centerX - chordX} ${centerY + halfGap}
+               Z" 
+            fill="currentColor" 
+            stroke="none"/>
+    `;
+    
+    // Special states
+    if (state === 'jammed') {
+      return `
+        <svg viewBox="0 0 ${svgSize} ${svgSize}">
+          <g class="lock-group">
+            ${semiCircle1}
+            ${semiCircle2}
+          </g>
+        </svg>
+      `;
     }
+    
+    if (state === 'unknown' || state === 'unavailable') {
+      return `
+        <svg viewBox="0 0 ${svgSize} ${svgSize}">
+          <g class="lock-group">
+            ${semiCircle1}
+            ${semiCircle2}
+          </g>
+        </svg>
+      `;
+    }
+    
+    // Normal states - just the two half-circles with gap
+    return `
+      <svg viewBox="0 0 ${svgSize} ${svgSize}">
+        <g class="lock-group">
+          ${semiCircle1}
+          ${semiCircle2}
+        </g>
+      </svg>
+    `;
   }
 
   /**
@@ -348,14 +537,24 @@ class SexyLockCard extends HTMLElement {
   }
 
   /**
-   * Toggle lock state
+   * Toggle lock state with optimistic UI
    */
   _toggleLock(entity) {
     const currentState = entity.state;
     const isLocked = currentState === 'locked';
     
-    const service = isLocked ? 'unlock' : 'lock';
+    // Set user-initiated flag
+    this._userInitiated = true;
+    this._pendingUserAction = isLocked ? 'unlock' : 'lock';
     
+    // Immediately show requested state for instant feedback
+    const requestedState = isLocked ? 'unlock-requested' : 'lock-requested';
+    this._currentVisualState = requestedState;
+    this._animationPhase = 'transitioning';
+    this._updateVisuals();
+    
+    // Call the service
+    const service = isLocked ? 'unlock' : 'lock';
     this._hass.callService('lock', service, {
       entity_id: this._config.entity,
     });
@@ -391,11 +590,12 @@ class SexyLockCard extends HTMLElement {
       <style>
         :host {
           display: block;
-          --lock-locked-color: var(--success-color, #4caf50);
-          --lock-unlocked-color: var(--error-color, #f44336);
-          --lock-transitioning-color: var(--warning-color, #ff9800);
-          --lock-jammed-color: var(--warning-color, #ff5722);
-          --lock-unknown-color: var(--disabled-text-color, #9e9e9e);
+          --lock-locked-color: ${this._config?.color_locked || 'var(--success-color, #4caf50)'};
+          --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--error-color, #f44336)'};
+          --lock-transitioning-color: ${this._config?.color_transitioning || 'var(--warning-color, #ff9800)'};
+          --lock-jammed-color: ${this._config?.color_jammed || 'var(--warning-color, #ff5722)'};
+          --lock-unknown-color: ${this._config?.color_unknown || 'var(--disabled-text-color, #9e9e9e)'};
+          --lock-radius: 35;
         }
         
         .lock-card {
@@ -417,6 +617,7 @@ class SexyLockCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           gap: 12px;
+          overflow: visible;
         }
         
         .lock-icon-container {
@@ -428,58 +629,163 @@ class SexyLockCard extends HTMLElement {
           border-radius: 50%;
           background: var(--primary-background-color);
           position: relative;
-          overflow: hidden;
-          transition: all ${this._config?.animation_duration || 400}ms cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .lock-icon {
-          width: 64px;
-          height: 64px;
+          width: 120px;
+          height: 120px;
           fill: currentColor;
-          transition: all ${this._config?.animation_duration || 400}ms cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .lock-group {
+          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          transform-origin: center;
+        }
+        
+        /* Rotation states */
+        .lock-icon.rotate-locked .lock-group {
+          transform: rotate(0deg);
+        }
+        
+        .lock-icon.rotate-unlocked .lock-group {
+          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}90deg);
+        }
+        
+        .semi-circle {
+          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Slide is controlled ONLY by locked vs unlocked state */
+        /* Transitional states (locking/unlocking/requested) don't affect slide */
+        /* Slide position should already be at destination before rotation starts */
+        
+        /* Unlocked state - slide apart */
+        .lock-icon.slide-unlocked .semi-circle-1 {
+          transform: translateX(calc(var(--lock-radius) * ${this._config?.offset_slide || 0} * 1px));
+        }
+        
+        .lock-icon.slide-unlocked .semi-circle-2 {
+          transform: translateX(calc(var(--lock-radius) * ${this._config?.offset_slide || 0} * -1px));
+        }
+        
+        /* Locked state - slide together (symmetry) */
+        .lock-icon.slide-locked .semi-circle-1 {
+          transform: translateX(0);
+        }
+        
+        .lock-icon.slide-locked .semi-circle-2 {
+          transform: translateX(0);
         }
         
         /* State-specific colors */
         .lock-icon-container.locked {
           color: var(--lock-locked-color);
-          box-shadow: 0 0 0 3px var(--lock-locked-color);
+          box-shadow: 0 0 0 5px var(--lock-locked-color);
         }
         
         .lock-icon-container.unlocked {
           color: var(--lock-unlocked-color);
-          box-shadow: 0 0 0 3px var(--lock-unlocked-color);
+          box-shadow: 0 0 0 5px var(--lock-unlocked-color);
         }
         
         .lock-icon-container.locking,
-        .lock-icon-container.unlocking {
+        .lock-icon-container.unlocking,
+        .lock-icon-container.lock-requested,
+        .lock-icon-container.unlock-requested {
           color: var(--lock-transitioning-color);
-          box-shadow: 0 0 0 3px var(--lock-transitioning-color);
+        }
+        
+        /* Rotating gradient ring for REQUESTED states only */
+        .lock-icon-container.lock-requested,
+        .lock-icon-container.unlock-requested {
+          position: relative;
+          /* Keep the solid ring */
+          box-shadow: 0 0 0 5px var(--lock-transitioning-color);
+        }
+        
+        /* Static ring for locking/unlocking (no animation) */
+        .lock-icon-container.locking,
+        .lock-icon-container.unlocking {
+          box-shadow: 0 0 0 5px var(--lock-transitioning-color);
+        }
+        
+        /* Create rotating gradient overlay - always spinning when visible */
+        .lock-icon-container::before {
+          content: '';
+          position: absolute;
+          top: -5px;
+          left: -5px;
+          right: -5px;
+          bottom: -5px;
+          border-radius: 50%;
+          /* Linear gradient - bright band with darker rest */
+          background: linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.4) 0%,
+            rgba(0, 0, 0, 0.4) 12.5%,
+            transparent 50%,
+            rgba(0, 0, 0, 0.4) 87.5%,
+            rgba(0, 0, 0, 0.4) 100%
+          );
+          /* Mask to show only the ring area */
+          mask: radial-gradient(circle at center, transparent 60px, white 60px);
+          -webkit-mask: radial-gradient(circle at center, transparent 60px, white 60px);
+          pointer-events: none;
+          z-index: 1;
+          opacity: 0;
+        }
+        
+        /* Show spinning gradient ONLY on requested states */
+        .lock-icon-container.lock-requested::before,
+        .lock-icon-container.unlock-requested::before {
+          opacity: 1;
         }
         
         .lock-icon-container.jammed {
           color: var(--lock-jammed-color);
-          box-shadow: 0 0 0 3px var(--lock-jammed-color);
+          box-shadow: 0 0 0 5px var(--lock-jammed-color);
           animation: shake 0.5s ease-in-out infinite;
         }
         
         .lock-icon-container.unknown,
         .lock-icon-container.unavailable {
           color: var(--lock-unknown-color);
-          box-shadow: 0 0 0 3px var(--lock-unknown-color);
+          box-shadow: 0 0 0 5px var(--lock-unknown-color);
           animation: breathe 2s ease-in-out infinite;
         }
         
         /* Animation for transitioning state */
         .lock-icon-container.animating .lock-icon {
-          animation: rotate-pulse ${this._config?.animation_duration || 400}ms ease-in-out;
+          animation: none;
         }
         
-        @keyframes rotate-pulse {
-          0% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.1) rotate(-10deg); }
-          50% { transform: scale(1.15) rotate(0deg); }
-          75% { transform: scale(1.1) rotate(10deg); }
-          100% { transform: scale(1) rotate(0deg); }
+        /* Ensure icon stays on top of gradient ring */
+        .lock-icon-container.lock-requested .lock-icon,
+        .lock-icon-container.unlock-requested .lock-icon {
+          position: relative;
+          z-index: 2;
+        }
+        
+        /* Lock-requested rotates gradient clockwise */
+        .lock-icon-container.lock-requested::before {
+          animation: ring-rotate-cw ${this._config?.gradient_speed || 2}s linear infinite;
+        }
+        
+        /* Unlock-requested rotates gradient counterclockwise */
+        .lock-icon-container.unlock-requested::before {
+          animation: ring-rotate-ccw ${this._config?.gradient_speed || 2}s linear infinite;
+        }
+        
+        @keyframes ring-rotate-cw {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes ring-rotate-ccw {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(-360deg); }
         }
         
         @keyframes shake {
@@ -521,6 +827,12 @@ class SexyLockCard extends HTMLElement {
         </div>
       </ha-card>
     `;
+    
+    // Initialize the SVG content
+    const lockIcon = this.shadowRoot.querySelector('.lock-icon');
+    if (lockIcon) {
+      lockIcon.innerHTML = this._getIconSVG(this._currentVisualState);
+    }
     
     // Add event listeners
     const card = this.shadowRoot.querySelector('.lock-card');
@@ -666,6 +978,35 @@ class SexyLockCardEditor extends HTMLElement {
           border-bottom: 1px solid var(--divider-color);
         }
         
+        .section-header.expandable {
+          cursor: pointer;
+          user-select: none;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .section-header.expandable::before {
+          content: '▶';
+          font-size: 12px;
+          transition: transform 0.2s;
+        }
+        
+        .section-header.expandable.expanded::before {
+          transform: rotate(90deg);
+        }
+        
+        .section-content {
+          display: none;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 16px;
+        }
+        
+        .section-content.expanded {
+          display: flex;
+        }
+        
         .switch-row {
           display: flex;
           align-items: center;
@@ -713,6 +1054,38 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
+        <div class="section-header">Color Settings</div>
+        
+        <div class="option">
+          <label>Locked Color</label>
+          <div class="description">Color when lock is locked (default: green)</div>
+          <div class="color-locked-input"></div>
+        </div>
+        
+        <div class="option">
+          <label>Unlocked Color</label>
+          <div class="description">Color when lock is unlocked (default: red)</div>
+          <div class="color-unlocked-input"></div>
+        </div>
+        
+        <div class="option">
+          <label>Transitioning Color</label>
+          <div class="description">Color during locking/unlocking (default: orange)</div>
+          <div class="color-transitioning-input"></div>
+        </div>
+        
+        <div class="option">
+          <label>Jammed Color</label>
+          <div class="description">Color when lock is jammed (default: red-orange)</div>
+          <div class="color-jammed-input"></div>
+        </div>
+        
+        <div class="option">
+          <label>Unknown Color</label>
+          <div class="description">Color when state is unknown (default: gray)</div>
+          <div class="color-unknown-input"></div>
+        </div>
+        
         <div class="section-header">Animation Settings</div>
         
         <div class="option">
@@ -737,10 +1110,49 @@ class SexyLockCardEditor extends HTMLElement {
           <div class="description">Action to perform when card is held</div>
           <div class="hold-action-selector"></div>
         </div>
+        
+        <div class="section-header expandable">Advanced Animation Settings</div>
+        <div class="section-content">
+          <div class="option">
+            <label>Unlock Direction</label>
+            <div class="description">Direction to rotate when unlocking</div>
+            <div class="unlock-direction-selector"></div>
+          </div>
+          
+          <div class="option">
+            <label>Slide Offset</label>
+            <div class="description">Distance semi-circles slide apart when unlocked (0.0-1.0, can be negative)</div>
+            <div class="number-input">
+              <div class="offset-slide-input" style="flex: 1;"></div>
+            </div>
+          </div>
+          
+          <div class="option">
+            <label>Gradient Rotation Speed</label>
+            <div class="description">Speed of the spinning gradient during requested states</div>
+            <div class="number-input">
+              <div class="gradient-speed-input" style="flex: 1;"></div>
+              <span>seconds</span>
+            </div>
+          </div>
+        </div>
       </div>
     `;
 
     this._renderElements();
+    this._setupAdvancedToggle();
+  }
+  
+  _setupAdvancedToggle() {
+    const advancedHeader = this.shadowRoot.querySelector('.section-header.expandable');
+    const advancedContent = this.shadowRoot.querySelector('.section-content');
+    
+    if (advancedHeader && advancedContent) {
+      advancedHeader.addEventListener('click', () => {
+        advancedHeader.classList.toggle('expanded');
+        advancedContent.classList.toggle('expanded');
+      });
+    }
   }
 
   _renderElements() {
@@ -802,6 +1214,33 @@ class SexyLockCardEditor extends HTMLElement {
     const animationContainer = this.shadowRoot.querySelector('.animation-input');
     animationContainer.appendChild(animationInput);
 
+    // Color inputs
+    const colorConfigs = [
+      { name: 'locked', default: '#4caf50', label: 'Locked Color' },
+      { name: 'unlocked', default: '#f44336', label: 'Unlocked Color' },
+      { name: 'transitioning', default: '#ff9800', label: 'Transitioning Color' },
+      { name: 'jammed', default: '#ff5722', label: 'Jammed Color' },
+      { name: 'unknown', default: '#9e9e9e', label: 'Unknown Color' }
+    ];
+    
+    colorConfigs.forEach(colorConfig => {
+      const colorInput = document.createElement('ha-selector');
+      colorInput.hass = this._hass;
+      colorInput.selector = { 
+        color_rgb: { } 
+      };
+      colorInput.value = this._config[`color_${colorConfig.name}`] || '';
+      colorInput.label = colorConfig.label;
+      colorInput.addEventListener('value-changed', (e) => {
+        this._colorChanged(colorConfig.name, e);
+      });
+      
+      const colorContainer = this.shadowRoot.querySelector(`.color-${colorConfig.name}-input`);
+      if (colorContainer) {
+        colorContainer.appendChild(colorInput);
+      }
+    });
+
     // Tap action selector
     const tapActionSelector = document.createElement('ha-selector');
     tapActionSelector.hass = this._hass;
@@ -821,6 +1260,59 @@ class SexyLockCardEditor extends HTMLElement {
     
     const holdActionContainer = this.shadowRoot.querySelector('.hold-action-selector');
     holdActionContainer.appendChild(holdActionSelector);
+    
+    // Advanced settings
+    
+    // Unlock direction selector
+    const unlockDirectionSelector = document.createElement('ha-selector');
+    unlockDirectionSelector.hass = this._hass;
+    unlockDirectionSelector.selector = { 
+      select: {
+        options: [
+          { value: 'counterclockwise', label: 'Counter-clockwise' },
+          { value: 'clockwise', label: 'Clockwise' }
+        ]
+      }
+    };
+    unlockDirectionSelector.value = this._config.unlock_direction || 'counterclockwise';
+    unlockDirectionSelector.addEventListener('value-changed', this._unlockDirectionChanged.bind(this));
+    
+    const unlockDirectionContainer = this.shadowRoot.querySelector('.unlock-direction-selector');
+    unlockDirectionContainer.appendChild(unlockDirectionSelector);
+    
+    // Offset slide input
+    const offsetSlideInput = document.createElement('ha-selector');
+    offsetSlideInput.hass = this._hass;
+    offsetSlideInput.selector = { 
+      number: { 
+        min: -1.0, 
+        max: 1.0, 
+        step: 0.05,
+        mode: 'box'
+      } 
+    };
+    offsetSlideInput.value = this._config.offset_slide !== undefined ? this._config.offset_slide : 0.3;
+    offsetSlideInput.addEventListener('value-changed', this._offsetSlideChanged.bind(this));
+    
+    const offsetSlideContainer = this.shadowRoot.querySelector('.offset-slide-input');
+    offsetSlideContainer.appendChild(offsetSlideInput);
+    
+    // Gradient speed input
+    const gradientSpeedInput = document.createElement('ha-selector');
+    gradientSpeedInput.hass = this._hass;
+    gradientSpeedInput.selector = { 
+      number: { 
+        min: 0.5, 
+        max: 10, 
+        step: 0.5,
+        mode: 'box'
+      } 
+    };
+    gradientSpeedInput.value = this._config.gradient_speed !== undefined ? this._config.gradient_speed : 2;
+    gradientSpeedInput.addEventListener('value-changed', this._gradientSpeedChanged.bind(this));
+    
+    const gradientSpeedContainer = this.shadowRoot.querySelector('.gradient-speed-input');
+    gradientSpeedContainer.appendChild(gradientSpeedInput);
   }
 
   _entityChanged(ev) {
@@ -867,6 +1359,21 @@ class SexyLockCardEditor extends HTMLElement {
     }
   }
 
+  _colorChanged(colorName, ev) {
+    if (!this._config) return;
+    
+    const value = ev.detail.value;
+    const newConfig = { ...this._config };
+    const configKey = `color_${colorName}`;
+    
+    if (value) {
+      newConfig[configKey] = value;
+    } else {
+      delete newConfig[configKey];
+    }
+    this._updateConfig(newConfig);
+  }
+
   _tapActionChanged(ev) {
     if (!this._config) return;
     
@@ -879,6 +1386,33 @@ class SexyLockCardEditor extends HTMLElement {
     
     const newConfig = { ...this._config, hold_action: ev.detail.value };
     this._updateConfig(newConfig);
+  }
+  
+  _unlockDirectionChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config, unlock_direction: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+  
+  _offsetSlideChanged(ev) {
+    if (!this._config) return;
+    
+    const value = ev.detail.value;
+    if (value !== undefined && value >= -1.0 && value <= 1.0) {
+      const newConfig = { ...this._config, offset_slide: value };
+      this._updateConfig(newConfig);
+    }
+  }
+  
+  _gradientSpeedChanged(ev) {
+    if (!this._config) return;
+    
+    const value = ev.detail.value;
+    if (value !== undefined && value >= 0.5 && value <= 10) {
+      const newConfig = { ...this._config, gradient_speed: value };
+      this._updateConfig(newConfig);
+    }
   }
 
   _updateConfig(newConfig) {
@@ -909,7 +1443,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.1.1 ',
+  '%c SEXY-LOCK-CARD %c 1.2.0 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
