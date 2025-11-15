@@ -879,19 +879,13 @@ class SexyLockCard extends HTMLElement {
       <ha-card class="lock-card">
         <div class="lock-content">
           <div class="lock-icon-container">
-            <div class="lock-icon"></div>
+            <div class="lock-icon">${this._getIconSVG(this._currentVisualState)}</div>
           </div>
           <h2 class="lock-name ${this._config?.show_name === false ? 'hidden' : ''}"></h2>
           <p class="lock-state-text ${this._config?.show_state === false ? 'hidden' : ''}"></p>
         </div>
       </ha-card>
     `;
-    
-    // Initialize the SVG content
-    const lockIcon = this.shadowRoot.querySelector('.lock-icon');
-    if (lockIcon) {
-      lockIcon.innerHTML = this._getIconSVG(this._currentVisualState);
-    }
     
     // Add event listeners
     const card = this.shadowRoot.querySelector('.lock-card');
@@ -1146,7 +1140,8 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
-        <div class="section-header">Animation Settings</div>
+        <div class="section-header expandable">Animation Settings</div>
+        <div class="section-content">
         
         <div class="option">
           <label>Animation Duration</label>
@@ -1196,6 +1191,8 @@ class SexyLockCardEditor extends HTMLElement {
             <div class="gradient-speed-input" style="flex: 1;"></div>
             <span>seconds</span>
           </div>
+        </div>
+        
         </div>
         
         <div class="section-header expandable">Actions</div>
