@@ -88,6 +88,13 @@ class SexyLockCard extends HTMLElement {
   }
 
   /**
+   * Stub config for HA grid metadata and preview
+   */
+  static getStubConfig() {
+    return { entity: 'lock.front_door' };
+  }
+
+  /**
    * Return stub config for card picker
    */
   static getStubConfig() {
@@ -641,8 +648,11 @@ class SexyLockCard extends HTMLElement {
       <style>
         :host {
           display: block;
+          height: 100%;
           padding: 0;
           margin: 0;
+          min-height: 0;
+          min-width: 0;
           --state-inactive-color: var(--state-icon-color);
           --lock-locked-color: ${this._config?.color_locked || 'var(--state-lock-locked-color, var(--state-active-color, var(--success-color, #4caf50)))'};
           --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--state-lock-unlocked-color, var(--error-color, #f44336))'}; 
@@ -660,12 +670,14 @@ class SexyLockCard extends HTMLElement {
         
         ha-card {
           width: 100%;
-          height: 100%;
+          height: auto;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
           position: relative;
           padding: var(--ha-card-padding, 0);
+          display: flex;
+          flex-direction: column;
         }
         
         .lock-card {
@@ -673,11 +685,13 @@ class SexyLockCard extends HTMLElement {
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
-          height: 100%;
+          height: auto;
           width: 100%;
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
+          min-height: 0;
+          min-width: 0;
         }
         
         .lock-card:active {
@@ -698,16 +712,17 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon-container {
-          flex: 1 1 0;
-          max-width: 100%;
-          max-height: 100%;
+          width: 100%;
           aspect-ratio: 1 / 1;
+          height: auto;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          min-height: 0;
+          min-width: 0;
         }
         
         .lock-icon {
