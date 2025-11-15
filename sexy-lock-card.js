@@ -559,7 +559,7 @@ window.customCards.push({
   name: 'Sexy Lock Card',
   description: 'Animated lock card with smooth state transitions',
   preview: true,
-  documentationURL: 'https://github.com/yourusername/sexy-lock-card',
+  documentationURL: 'https://github.com/electricessence/Sexy-Lock-Card',
 });
 
 // Log successful load

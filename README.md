@@ -1,9 +1,10 @@
 # Sexy Lock Card
 
-A highly polished, animated custom Lovelace card for Home Assistant that displays smart lock states with smooth visual transitions.
-
-![License](https://img.shields.io/badge/license-MIT-green)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+A highly polished, animated custom Lovelace card for Home Assistant that displays smart lock states with smooth visual transitions.
 
 ## Features
 
@@ -66,17 +67,24 @@ A highly polished, animated custom Lovelace card for Home Assistant that display
 
 ## Installation
 
-### Manual Installation (No HACS)
+### HACS (Recommended)
 
-1. **Create the custom card directory** (if it doesn't exist):
-   ```
-   <home-assistant-config>/www/
-   ```
+1. Open HACS in your Home Assistant
+2. Click on "Frontend"
+3. Click the 3-dot menu in the top right
+4. Select "Custom repositories"
+5. Add this repository URL: `https://github.com/electricessence/Sexy-Lock-Card`
+6. Category: `Lovelace`
+7. Click "Add"
+8. Click "Install" on the Sexy Lock Card
+9. Restart Home Assistant
+10. Clear browser cache (Ctrl+Shift+R)
 
-2. **Download the card file**:
-   - Copy `sexy-lock-card.js` to `<config>/www/sexy-lock-card.js`
+### Manual Installation
 
-3. **Add the resource to Lovelace**:
+1. Download `sexy-lock-card.js` from the [latest release](https://github.com/electricessence/Sexy-Lock-Card/releases)
+2. Copy it to `<config>/www/sexy-lock-card.js`
+3. Add the resource to Lovelace:
    
    **Via UI:**
    - Go to **Settings** → **Dashboards** → **Resources** (top right menu)
@@ -92,7 +100,8 @@ A highly polished, animated custom Lovelace card for Home Assistant that display
        type: module
    ```
 
-4. **Restart Home Assistant** (or refresh your browser with cache clear: Ctrl+Shift+R)
+4. Restart Home Assistant
+5. Clear browser cache (Ctrl+Shift+R)
 
 ---
 
@@ -415,8 +424,8 @@ If you find this useful, consider:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/sexy-lock-card/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/sexy-lock-card/discussions)
+- **Issues**: [GitHub Issues](https://github.com/electricessence/Sexy-Lock-Card/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/electricessence/Sexy-Lock-Card/discussions)
 - **Home Assistant Community**: [Forum Thread](https://community.home-assistant.io/)
 
 ---
