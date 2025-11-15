@@ -43,6 +43,26 @@ class SexyLockCard extends HTMLElement {
   }
 
   /**
+   * Return a visual editor configuration schema
+   * This enables the UI card editor in Home Assistant
+   */
+  static getConfigElement() {
+    return document.createElement('sexy-lock-card-editor');
+  }
+
+  /**
+   * Return stub config for card picker
+   */
+  static getStubConfig() {
+    return {
+      entity: 'lock.example',
+      show_name: true,
+      show_state: true,
+      animation_duration: 400,
+    };
+  }
+
+  /**
    * Home Assistant calls this when it has new state data
    */
   set hass(hass) {
@@ -551,6 +571,282 @@ class SexyLockCard extends HTMLElement {
 
 // Define the custom element
 customElements.define('sexy-lock-card', SexyLockCard);
+
+/**
+ * Visual Card Editor for Home Assistant UI
+ */
+class SexyLockCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config = {};
+    this._hass = null;
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    
+    // Update entity picker options if rendered
+    const entityPicker = this.shadowRoot?.querySelector('ha-entity-picker');
+    if (entityPicker && !entityPicker.hass) {
+      entityPicker.hass = hass;
+    }
+  }
+
+  _render() {
+    if (!this.shadowRoot) return;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .card-config {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 16px;
+        }
+        
+        .option {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .option label {
+          font-weight: 500;
+          font-size: 14px;
+          color: var(--primary-text-color);
+        }
+        
+        .option .description {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+          margin-top: -2px;
+        }
+        
+        ha-entity-picker,
+        ha-textfield,
+        ha-switch,
+        ha-selector {
+          width: 100%;
+        }
+        
+        .number-input {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .number-input ha-textfield {
+          flex: 1;
+        }
+        
+        .number-input span {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+        }
+        
+        .section-header {
+          font-weight: 500;
+          font-size: 16px;
+          color: var(--primary-text-color);
+          margin-top: 8px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--divider-color);
+        }
+        
+        .switch-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 40px;
+        }
+        
+        .switch-row label {
+          flex: 1;
+        }
+      </style>
+      
+      <div class="card-config">
+        <div class="option">
+          <label>Entity (Required)</label>
+          <div class="description">Select a lock entity</div>
+          <ha-entity-picker
+            .hass=${this._hass}
+            .value=${this._config.entity || ''}
+            .includeDomains=${['lock']}
+            allow-custom-entity
+            @value-changed=${this._entityChanged}
+          ></ha-entity-picker>
+        </div>
+        
+        <div class="option">
+          <label>Name</label>
+          <div class="description">Custom display name (leave empty to use entity name)</div>
+          <ha-textfield
+            .value=${this._config.name || ''}
+            placeholder="Front Door"
+            @input=${this._nameChanged}
+          ></ha-textfield>
+        </div>
+        
+        <div class="section-header">Display Options</div>
+        
+        <div class="option">
+          <div class="switch-row">
+            <label>
+              <div>Show Name</div>
+              <div class="description">Display the lock name below the icon</div>
+            </label>
+            <ha-switch
+              .checked=${this._config.show_name !== false}
+              @change=${this._showNameChanged}
+            ></ha-switch>
+          </div>
+        </div>
+        
+        <div class="option">
+          <div class="switch-row">
+            <label>
+              <div>Show State</div>
+              <div class="description">Display the current state text</div>
+            </label>
+            <ha-switch
+              .checked=${this._config.show_state !== false}
+              @change=${this._showStateChanged}
+            ></ha-switch>
+          </div>
+        </div>
+        
+        <div class="section-header">Animation Settings</div>
+        
+        <div class="option">
+          <label>Animation Duration</label>
+          <div class="description">Duration of lock/unlock animations in milliseconds</div>
+          <div class="number-input">
+            <ha-textfield
+              type="number"
+              min="100"
+              max="1000"
+              step="50"
+              .value=${this._config.animation_duration || 400}
+              @input=${this._animationDurationChanged}
+            ></ha-textfield>
+            <span>ms</span>
+          </div>
+        </div>
+        
+        <div class="section-header">Actions</div>
+        
+        <div class="option">
+          <label>Tap Action</label>
+          <div class="description">Action to perform when card is tapped</div>
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ ui_action: {} }}
+            .value=${this._config.tap_action || { action: 'toggle' }}
+            @value-changed=${this._tapActionChanged}
+          ></ha-selector>
+        </div>
+        
+        <div class="option">
+          <label>Hold Action</label>
+          <div class="description">Action to perform when card is held</div>
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ ui_action: {} }}
+            .value=${this._config.hold_action || { action: 'more-info' }}
+            @value-changed=${this._holdActionChanged}
+          ></ha-selector>
+        </div>
+      </div>
+    `;
+
+    // Update element references after render
+    if (this._hass) {
+      const entityPicker = this.shadowRoot.querySelector('ha-entity-picker');
+      if (entityPicker) {
+        entityPicker.hass = this._hass;
+      }
+    }
+  }
+
+  _entityChanged(ev) {
+    if (!this._config || !this._hass) return;
+    
+    const newConfig = { ...this._config, entity: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
+  _nameChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config };
+    if (ev.target.value) {
+      newConfig.name = ev.target.value;
+    } else {
+      delete newConfig.name;
+    }
+    this._updateConfig(newConfig);
+  }
+
+  _showNameChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config, show_name: ev.target.checked };
+    this._updateConfig(newConfig);
+  }
+
+  _showStateChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config, show_state: ev.target.checked };
+    this._updateConfig(newConfig);
+  }
+
+  _animationDurationChanged(ev) {
+    if (!this._config) return;
+    
+    const value = parseInt(ev.target.value, 10);
+    if (!isNaN(value) && value >= 100 && value <= 1000) {
+      const newConfig = { ...this._config, animation_duration: value };
+      this._updateConfig(newConfig);
+    }
+  }
+
+  _tapActionChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config, tap_action: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
+  _holdActionChanged(ev) {
+    if (!this._config) return;
+    
+    const newConfig = { ...this._config, hold_action: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
+  _updateConfig(newConfig) {
+    this._config = newConfig;
+    
+    // Fire config-changed event for Home Assistant
+    const event = new CustomEvent('config-changed', {
+      detail: { config: newConfig },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+// Define the editor element
+customElements.define('sexy-lock-card-editor', SexyLockCardEditor);
 
 // Register with Home Assistant card picker
 window.customCards = window.customCards || [];
