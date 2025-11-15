@@ -473,15 +473,32 @@ class SexyLockCard extends HTMLElement {
     const halfGap = gap / 2;
     const chordX = Math.sqrt(radius * radius - halfGap * halfGap);
     
-    // Ring circle (stroke, no fill)
+    // Ring as single filled path (donut shape using fill-rule)
+    const outerRadius = ringRadius + (ringWidth / 2);
+    const innerRadius = ringRadius - (ringWidth / 2);
+    const ringPath = `M ${centerX},${centerY - outerRadius}
+               A ${outerRadius},${outerRadius} 0 1,1 ${centerX},${centerY + outerRadius}
+               A ${outerRadius},${outerRadius} 0 1,1 ${centerX},${centerY - outerRadius}
+               Z
+               M ${centerX},${centerY - innerRadius}
+               A ${innerRadius},${innerRadius} 0 1,0 ${centerX},${centerY + innerRadius}
+               A ${innerRadius},${innerRadius} 0 1,0 ${centerX},${centerY - innerRadius}
+               Z`;
+    
     const ring = `
-      <circle class="lock-ring" 
-              cx="${centerX}" 
-              cy="${centerY}" 
-              r="${ringRadius}" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="${ringWidth}"/>
+      <path class="lock-ring-base" 
+            d="${ringPath}"
+            fill="currentColor"
+            fill-rule="evenodd"
+            opacity="0.6"/>
+      <g class="lock-ring-gradient-group">
+        <path class="lock-ring-gradient" 
+              d="${ringPath}"
+              fill="url(#ring-gradient-requested)"
+              fill-rule="evenodd"
+              style="mix-blend-mode: screen;"
+              opacity="0"/>
+      </g>
     `;
     
     // Top piece: arc above the cut
@@ -510,6 +527,13 @@ class SexyLockCard extends HTMLElement {
     return `
       <svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="xMidYMid meet">
         <defs>
+          <linearGradient id="ring-gradient-requested">
+            <stop offset="0%" style="stop-color: rgba(255, 167, 38, 0.9); stop-opacity: 1" />
+            <stop offset="25%" style="stop-color: rgba(255, 255, 255, 0.8); stop-opacity: 1" />
+            <stop offset="50%" style="stop-color: rgba(255, 235, 59, 0.9); stop-opacity: 1" />
+            <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.8); stop-opacity: 1" />
+            <stop offset="100%" style="stop-color: rgba(255, 167, 38, 0.9); stop-opacity: 1" />
+          </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
             <feMerge>
@@ -770,52 +794,35 @@ class SexyLockCard extends HTMLElement {
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        /* Rotating gradient overlay for REQUESTED states */
-        .lock-icon-container::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 50%;
-          background: linear-gradient(
-            0deg,
-            rgba(0, 0, 0, 0.5) 0%,
-            rgba(0, 0, 0, 0.5) 12.5%,
-            transparent 50%,
-            rgba(0, 0, 0, 0.5) 87.5%,
-            rgba(0, 0, 0, 0.5) 100%
-          );
-          pointer-events: none;
-          z-index: 1;
-          opacity: 0;
-        }
-        
-        .lock-icon-container.lock-requested::before,
-        .lock-icon-container.unlock-requested::before {
+        /* Gradient overlay ring for requested states */
+        .lock-icon-container.lock-requested .lock-ring-gradient,
+        .lock-icon-container.unlock-requested .lock-ring-gradient {
           opacity: 1;
         }
         
-        .lock-icon-container.lock-requested::before {
+        .lock-icon-container.lock-requested .lock-ring-gradient-group {
           animation: ring-rotate-cw ${this._config?.gradient_speed || 2}s linear infinite;
         }
         
-        .lock-icon-container.unlock-requested::before {
+        .lock-icon-container.unlock-requested .lock-ring-gradient-group {
           animation: ring-rotate-ccw ${this._config?.gradient_speed || 2}s linear infinite;
         }
         
-        /* Keep icon on top of gradient */
-        .lock-icon-container.lock-requested .lock-icon,
-        .lock-icon-container.unlock-requested .lock-icon {
-          position: relative;
-          z-index: 2;
+        .lock-ring-gradient {
+          transition: opacity 0.3s ease;
+        }
+        
+        .lock-ring-gradient-group {
+          transform-origin: 50px 50px;
         }
         
         /* Breathing animation for jammed/unknown states */
-        .lock-icon-container.jammed .lock-ring {
+        .lock-icon-container.jammed .lock-ring-base {
           animation: breathe 2s ease-in-out infinite;
         }
         
-        .lock-icon-container.unknown .lock-ring,
-        .lock-icon-container.unavailable .lock-ring {
+        .lock-icon-container.unknown .lock-ring-base,
+        .lock-icon-container.unavailable .lock-ring-base {
           animation: breathe-subtle 2s ease-in-out infinite;
         }
         
