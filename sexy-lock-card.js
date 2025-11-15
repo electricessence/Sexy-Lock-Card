@@ -351,7 +351,31 @@ class SexyLockCard extends HTMLElement {
       stateEl.textContent = this._getStateLabel(entity.state);
     }
     
+    this._syncVisualStateWithEntity(entity);
     this._updateVisuals();
+  }
+
+  /**
+   * Ensure the visual state never drifts from the actual entity state.
+   * If HA says we're in a stable state (locked/unlocked/etc.), snap the
+   * animation to that state and clear any lingering timers.
+   */
+  _syncVisualStateWithEntity(entity) {
+    if (!entity) return;
+    const normalized = this._normalizeState(entity.state);
+    const stableStates = new Set(['locked', 'unlocked', 'jammed', 'unknown', 'unavailable']);
+    if (!stableStates.has(normalized)) {
+      return;
+    }
+
+    if (this._currentVisualState !== normalized) {
+      if (this._animationTimer) {
+        clearTimeout(this._animationTimer);
+        this._animationTimer = null;
+      }
+      this._currentVisualState = normalized;
+      this._animationPhase = 'idle';
+    }
   }
 
   /**
