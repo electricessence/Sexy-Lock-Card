@@ -634,14 +634,10 @@ class SexyLockCard extends HTMLElement {
         
         ha-card {
           height: 100%;
-          display: flex;
-          flex-direction: column;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
           position: relative;
-          justify-content: center;
-          align-items: center;
         }
         
         .lock-card {
@@ -650,8 +646,10 @@ class SexyLockCard extends HTMLElement {
           user-select: none;
           transition: transform 0.1s ease;
           height: 100%;
+          width: 100%;
           display: flex;
           flex-direction: column;
+          box-sizing: border-box;
         }
         
         .lock-card:active {
@@ -663,22 +661,19 @@ class SexyLockCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 12px;
-          overflow: visible;
+          gap: 8px;
           flex: 1;
+          min-height: 0;
+          width: 100%;
         }
         
         .lock-icon-container {
-          width: min(120px, 80%);
-          height: min(120px, 80%);
-          max-width: 200px;
-          max-height: 200px;
+          width: min(60%, 200px);
           aspect-ratio: 1;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          background: transparent;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -1160,6 +1155,47 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
+        <div class="option">
+          <label>Rotation Duration</label>
+          <div class="description">Duration for lock rotation animation</div>
+          <div class="number-input">
+            <div class="rotation-duration-input" style="flex: 1;"></div>
+            <span>ms</span>
+          </div>
+        </div>
+        
+        <div class="option">
+          <label>Slide Duration</label>
+          <div class="description">Duration for semi-circle slide animation</div>
+          <div class="number-input">
+            <div class="slide-duration-input" style="flex: 1;"></div>
+            <span>ms</span>
+          </div>
+        </div>
+        
+        <div class="option">
+          <label>Unlock Direction</label>
+          <div class="description">Direction to rotate when unlocking</div>
+          <div class="unlock-direction-selector"></div>
+        </div>
+        
+        <div class="option">
+          <label>Slide Offset</label>
+          <div class="description">Distance semi-circles slide apart when unlocked (0.0-1.0, can be negative)</div>
+          <div class="number-input">
+            <div class="offset-slide-input" style="flex: 1;"></div>
+          </div>
+        </div>
+        
+        <div class="option">
+          <label>Gradient Rotation Speed</label>
+          <div class="description">Speed of the spinning gradient during requested states</div>
+          <div class="number-input">
+            <div class="gradient-speed-input" style="flex: 1;"></div>
+            <span>seconds</span>
+          </div>
+        </div>
+        
         <div class="section-header expandable">Actions</div>
         <div class="section-content">
           <div class="option">
@@ -1175,49 +1211,7 @@ class SexyLockCardEditor extends HTMLElement {
           </div>
         </div>
         
-        <div class="section-header expandable">Advanced Animation Settings</div>
-        <div class="section-content">
-          <div class="option">
-            <label>Rotation Duration</label>
-            <div class="description">Duration for lock rotation animation</div>
-            <div class="number-input">
-              <div class="rotation-duration-input" style="flex: 1;"></div>
-              <span>ms</span>
-            </div>
-          </div>
-          
-          <div class="option">
-            <label>Slide Duration</label>
-            <div class="description">Duration for semi-circle slide animation</div>
-            <div class="number-input">
-              <div class="slide-duration-input" style="flex: 1;"></div>
-              <span>ms</span>
-            </div>
-          </div>
-          
-          <div class="option">
-            <label>Unlock Direction</label>
-            <div class="description">Direction to rotate when unlocking</div>
-            <div class="unlock-direction-selector"></div>
-          </div>
-          
-          <div class="option">
-            <label>Slide Offset</label>
-            <div class="description">Distance semi-circles slide apart when unlocked (0.0-1.0, can be negative)</div>
-            <div class="number-input">
-              <div class="offset-slide-input" style="flex: 1;"></div>
-            </div>
-          </div>
-          
-          <div class="option">
-            <label>Gradient Rotation Speed</label>
-            <div class="description">Speed of the spinning gradient during requested states</div>
-            <div class="number-input">
-              <div class="gradient-speed-input" style="flex: 1;"></div>
-              <span>seconds</span>
-            </div>
-          </div>
-        </div>
+
       </div>
     `;
 
