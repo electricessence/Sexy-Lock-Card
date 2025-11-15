@@ -1027,13 +1027,23 @@ class SexyLockCardEditor extends HTMLElement {
     this._hass = null;
     this._isRendered = false;
     this._colorInputs = {};
+    this._lastConfigJSON = '';
   }
 
   setConfig(config) {
-    this._config = { ...config };
+    const safeConfig = config || {};
+    const incomingJSON = JSON.stringify(safeConfig);
+    const hasRealChange = incomingJSON !== this._lastConfigJSON;
+
+    this._config = { ...safeConfig };
+    this._lastConfigJSON = incomingJSON;
+
     if (!this._isRendered) {
       this._render();
-    } else {
+      return;
+    }
+
+    if (hasRealChange) {
       this._updateFormValues();
     }
   }
@@ -1708,6 +1718,7 @@ class SexyLockCardEditor extends HTMLElement {
 
   _updateConfig(newConfig) {
     this._config = newConfig;
+    this._lastConfigJSON = JSON.stringify(newConfig);
     
     // Fire config-changed event for Home Assistant
     const event = new CustomEvent('config-changed', {
