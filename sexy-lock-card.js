@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.1.0
+ * @version 1.1.1
  */
 
 class SexyLockCard extends HTMLElement {
@@ -591,10 +591,12 @@ class SexyLockCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     
-    // Update entity picker options if rendered
-    const entityPicker = this.shadowRoot?.querySelector('ha-entity-picker');
-    if (entityPicker && !entityPicker.hass) {
-      entityPicker.hass = hass;
+    // Update all selectors with hass if already rendered
+    const selectors = this.shadowRoot?.querySelectorAll('ha-selector');
+    if (selectors) {
+      selectors.forEach(selector => {
+        selector.hass = hass;
+      });
     }
   }
 
@@ -607,7 +609,7 @@ class SexyLockCardEditor extends HTMLElement {
           display: flex;
           flex-direction: column;
           gap: 16px;
-          padding: 16px;
+          padding: 0;
         }
         
         .option {
@@ -626,12 +628,15 @@ class SexyLockCardEditor extends HTMLElement {
           font-size: 12px;
           color: var(--secondary-text-color);
           margin-top: -2px;
+          margin-bottom: 4px;
         }
         
-        ha-entity-picker,
-        ha-textfield,
-        ha-switch,
         ha-selector {
+          width: 100%;
+        }
+        
+        paper-input,
+        ha-textfield {
           width: 100%;
         }
         
@@ -641,6 +646,7 @@ class SexyLockCardEditor extends HTMLElement {
           gap: 8px;
         }
         
+        .number-input paper-input,
         .number-input ha-textfield {
           flex: 1;
         }
@@ -648,6 +654,7 @@ class SexyLockCardEditor extends HTMLElement {
         .number-input span {
           font-size: 12px;
           color: var(--secondary-text-color);
+          white-space: nowrap;
         }
         
         .section-header {
@@ -666,8 +673,12 @@ class SexyLockCardEditor extends HTMLElement {
           min-height: 40px;
         }
         
-        .switch-row label {
+        .switch-row .label-wrapper {
           flex: 1;
+        }
+        
+        ha-switch {
+          padding: 8px;
         }
       </style>
       
@@ -675,50 +686,30 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="option">
           <label>Entity (Required)</label>
           <div class="description">Select a lock entity</div>
-          <ha-entity-picker
-            .hass=${this._hass}
-            .value=${this._config.entity || ''}
-            .includeDomains=${['lock']}
-            allow-custom-entity
-            @value-changed=${this._entityChanged}
-          ></ha-entity-picker>
         </div>
-        
         <div class="option">
-          <label>Name</label>
-          <div class="description">Custom display name (leave empty to use entity name)</div>
-          <ha-textfield
-            .value=${this._config.name || ''}
-            placeholder="Front Door"
-            @input=${this._nameChanged}
-          ></ha-textfield>
+          <div class="name-input"></div>
         </div>
         
         <div class="section-header">Display Options</div>
         
         <div class="option">
           <div class="switch-row">
-            <label>
-              <div>Show Name</div>
+            <div class="label-wrapper">
+              <label>Show Name</label>
               <div class="description">Display the lock name below the icon</div>
-            </label>
-            <ha-switch
-              .checked=${this._config.show_name !== false}
-              @change=${this._showNameChanged}
-            ></ha-switch>
+            </div>
+            <div class="show-name-switch"></div>
           </div>
         </div>
         
         <div class="option">
           <div class="switch-row">
-            <label>
-              <div>Show State</div>
+            <div class="label-wrapper">
+              <label>Show State</label>
               <div class="description">Display the current state text</div>
-            </label>
-            <ha-switch
-              .checked=${this._config.show_state !== false}
-              @change=${this._showStateChanged}
-            ></ha-switch>
+            </div>
+            <div class="show-state-switch"></div>
           </div>
         </div>
         
@@ -728,14 +719,7 @@ class SexyLockCardEditor extends HTMLElement {
           <label>Animation Duration</label>
           <div class="description">Duration of lock/unlock animations in milliseconds</div>
           <div class="number-input">
-            <ha-textfield
-              type="number"
-              min="100"
-              max="1000"
-              step="50"
-              .value=${this._config.animation_duration || 400}
-              @input=${this._animationDurationChanged}
-            ></ha-textfield>
+            <div class="animation-input" style="flex: 1;"></div>
             <span>ms</span>
           </div>
         </div>
@@ -745,34 +729,98 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="option">
           <label>Tap Action</label>
           <div class="description">Action to perform when card is tapped</div>
-          <ha-selector
-            .hass=${this._hass}
-            .selector=${{ ui_action: {} }}
-            .value=${this._config.tap_action || { action: 'toggle' }}
-            @value-changed=${this._tapActionChanged}
-          ></ha-selector>
+          <div class="tap-action-selector"></div>
         </div>
         
         <div class="option">
           <label>Hold Action</label>
           <div class="description">Action to perform when card is held</div>
-          <ha-selector
-            .hass=${this._hass}
-            .selector=${{ ui_action: {} }}
-            .value=${this._config.hold_action || { action: 'more-info' }}
-            @value-changed=${this._holdActionChanged}
-          ></ha-selector>
+          <div class="hold-action-selector"></div>
         </div>
       </div>
     `;
 
-    // Update element references after render
-    if (this._hass) {
-      const entityPicker = this.shadowRoot.querySelector('ha-entity-picker');
-      if (entityPicker) {
-        entityPicker.hass = this._hass;
-      }
-    }
+    this._renderElements();
+  }
+
+  _renderElements() {
+    if (!this._hass) return;
+
+    // Entity selector
+    const entitySelector = document.createElement('ha-selector');
+    entitySelector.hass = this._hass;
+    entitySelector.selector = { entity: { domain: 'lock' } };
+    entitySelector.value = this._config.entity || '';
+    entitySelector.label = 'Entity';
+    entitySelector.addEventListener('value-changed', this._entityChanged.bind(this));
+    
+    const entityContainer = this.shadowRoot.querySelector('.option');
+    entityContainer.appendChild(entitySelector);
+
+    // Name input
+    const nameInput = document.createElement('ha-selector');
+    nameInput.hass = this._hass;
+    nameInput.selector = { text: { } };
+    nameInput.value = this._config.name || '';
+    nameInput.label = 'Name';
+    nameInput.addEventListener('value-changed', this._nameChanged.bind(this));
+    
+    const nameContainer = this.shadowRoot.querySelector('.name-input');
+    nameContainer.appendChild(nameInput);
+
+    // Show name switch
+    const showNameSwitch = document.createElement('ha-switch');
+    showNameSwitch.checked = this._config.show_name !== false;
+    showNameSwitch.addEventListener('change', this._showNameChanged.bind(this));
+    
+    const showNameContainer = this.shadowRoot.querySelector('.show-name-switch');
+    showNameContainer.appendChild(showNameSwitch);
+
+    // Show state switch
+    const showStateSwitch = document.createElement('ha-switch');
+    showStateSwitch.checked = this._config.show_state !== false;
+    showStateSwitch.addEventListener('change', this._showStateChanged.bind(this));
+    
+    const showStateContainer = this.shadowRoot.querySelector('.show-state-switch');
+    showStateContainer.appendChild(showStateSwitch);
+
+    // Animation duration
+    const animationInput = document.createElement('ha-selector');
+    animationInput.hass = this._hass;
+    animationInput.selector = { 
+      number: { 
+        min: 100, 
+        max: 1000, 
+        step: 50,
+        mode: 'box',
+        unit_of_measurement: 'ms'
+      } 
+    };
+    animationInput.value = this._config.animation_duration || 400;
+    animationInput.addEventListener('value-changed', this._animationDurationChanged.bind(this));
+    
+    const animationContainer = this.shadowRoot.querySelector('.animation-input');
+    animationContainer.appendChild(animationInput);
+
+    // Tap action selector
+    const tapActionSelector = document.createElement('ha-selector');
+    tapActionSelector.hass = this._hass;
+    tapActionSelector.selector = { ui_action: { } };
+    tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
+    tapActionSelector.addEventListener('value-changed', this._tapActionChanged.bind(this));
+    
+    const tapActionContainer = this.shadowRoot.querySelector('.tap-action-selector');
+    tapActionContainer.appendChild(tapActionSelector);
+
+    // Hold action selector
+    const holdActionSelector = document.createElement('ha-selector');
+    holdActionSelector.hass = this._hass;
+    holdActionSelector.selector = { ui_action: { } };
+    holdActionSelector.value = this._config.hold_action || { action: 'more-info' };
+    holdActionSelector.addEventListener('value-changed', this._holdActionChanged.bind(this));
+    
+    const holdActionContainer = this.shadowRoot.querySelector('.hold-action-selector');
+    holdActionContainer.appendChild(holdActionSelector);
   }
 
   _entityChanged(ev) {
@@ -786,8 +834,9 @@ class SexyLockCardEditor extends HTMLElement {
     if (!this._config) return;
     
     const newConfig = { ...this._config };
-    if (ev.target.value) {
-      newConfig.name = ev.target.value;
+    const value = ev.detail.value;
+    if (value) {
+      newConfig.name = value;
     } else {
       delete newConfig.name;
     }
@@ -811,8 +860,8 @@ class SexyLockCardEditor extends HTMLElement {
   _animationDurationChanged(ev) {
     if (!this._config) return;
     
-    const value = parseInt(ev.target.value, 10);
-    if (!isNaN(value) && value >= 100 && value <= 1000) {
+    const value = ev.detail.value;
+    if (value !== undefined && value >= 100 && value <= 1000) {
       const newConfig = { ...this._config, animation_duration: value };
       this._updateConfig(newConfig);
     }
@@ -860,7 +909,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.1.0 ',
+  '%c SEXY-LOCK-CARD %c 1.1.1 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );

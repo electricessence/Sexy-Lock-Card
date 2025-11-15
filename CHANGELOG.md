@@ -5,6 +5,14 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-11-14
+
+### Fixed
+- 🔧 Entity selector now properly displays lock entities in UI editor
+- 🔧 Fixed all form inputs to use proper Home Assistant selectors
+- 🔧 Event handlers now correctly read values from selector components
+- 🔧 Elements created programmatically to ensure proper hass object binding
+
 ## [1.1.0] - 2025-11-14
 
 ### Added
@@ -113,5 +121,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.1.1]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.1.1
 [1.1.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.1.0
 [1.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.0.0

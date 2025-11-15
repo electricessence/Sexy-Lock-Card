@@ -1,6 +1,6 @@
 {
   "name": "sexy-lock-card",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Animated lock card for Home Assistant with smooth state transitions",
   "main": "sexy-lock-card.js",
   "keywords": [
