@@ -679,25 +679,32 @@ class SexyLockCard extends HTMLElement {
         ha-card {
           display: flex;
           flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
           width: 100%;
-          height: auto;
+          height: 100%;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
           position: relative;
-          padding: var(--ha-card-padding, 0);
+          padding: var(--ha-card-padding, 4% 0);
         }
         
         .lock-card {
+          width: 100%;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          flex: 1 1 auto;
-          width: 100%;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
           box-sizing: border-box;
-          padding: 1em;
+          padding: 0 1rem;
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
+          flex: 1 1 auto;
         }
         
         .lock-card:active {
@@ -707,42 +714,46 @@ class SexyLockCard extends HTMLElement {
         .lock-content {
           display: flex;
           flex-direction: column;
-          align-items: stretch;
-          justify-content: space-between;
-          gap: clamp(0.5em, 2vh, 1em);
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          width: 100%;
           flex: 1 1 auto;
           min-height: 0;
           min-width: 0;
-          width: 100%;
           position: relative;
+          box-sizing: border-box;
         }
 
         .lock-icon-container {
           flex: 1 1 auto;
           width: 100%;
-          max-width: 100%;
-          height: 100%;
           max-height: 100%;
-          overflow: hidden;
+          overflow: visible;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 50%;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          padding: 0 1rem;
+        }
+
+        .lock-icon-wrapper {
+          height: min(80%, 280px);
+          width: auto;
+          max-width: min(90%, 320px);
+          max-height: min(90%, 280px);
+          aspect-ratio: 1 / 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .lock-icon {
-          height: 100%;
-          width: auto;
-          max-width: 100%;
-          fill: currentColor;
-          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .lock-icon svg {
           width: 100%;
           height: 100%;
+          fill: currentColor;
+          transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .lock-ring-group {
@@ -907,7 +918,9 @@ class SexyLockCard extends HTMLElement {
       <ha-card class="lock-card">
         <div class="lock-content">
           <div class="lock-icon-container">
-            <div class="lock-icon">${this._getIconSVG(this._currentVisualState)}</div>
+            <div class="lock-icon-wrapper">
+              <div class="lock-icon">${this._getIconSVG(this._currentVisualState)}</div>
+            </div>
           </div>
           <h2 class="lock-name ${this._config?.show_name === false ? 'hidden' : ''}"></h2>
           <p class="lock-state-text ${this._config?.show_state === false ? 'hidden' : ''}"></p>
