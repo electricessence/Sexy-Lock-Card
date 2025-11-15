@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.2.1
+ * @version 1.2.2
  */
 
 class SexyLockCard extends HTMLElement {
