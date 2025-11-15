@@ -651,8 +651,6 @@ class SexyLockCard extends HTMLElement {
           height: 100%;
           padding: 0;
           margin: 0;
-          min-height: 0;
-          min-width: 0;
           --state-inactive-color: var(--state-icon-color);
           --lock-locked-color: ${this._config?.color_locked || 'var(--state-lock-locked-color, var(--state-active-color, var(--success-color, #4caf50)))'};
           --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--state-lock-unlocked-color, var(--error-color, #f44336))'}; 
@@ -668,30 +666,38 @@ class SexyLockCard extends HTMLElement {
           --slide-duration: ${this._config?.slide_duration || 1000}ms;
         }
         
+        /* Critical: prevent overflow in all flex children */
+        :host,
+        ha-card,
+        .lock-card,
+        .lock-content,
+        .lock-icon-container {
+          min-height: 0 !important;
+          min-width: 0 !important;
+        }
+        
         ha-card {
+          display: flex;
+          flex-direction: column;
           width: 100%;
-          height: 100%;
+          height: auto;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
           position: relative;
           padding: var(--ha-card-padding, 0);
-          display: flex;
-          flex-direction: column;
         }
         
         .lock-card {
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          width: 100%;
+          box-sizing: border-box;
           padding: 1em;
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
-          height: 100%;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          box-sizing: border-box;
-          min-height: 0;
-          min-width: 0;
         }
         
         .lock-card:active {
@@ -712,8 +718,9 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon-container {
-          width: 100%;
+          flex: 1 1 auto;
           max-height: 100%;
+          width: 100%;
           aspect-ratio: 1 / 1;
           overflow: hidden;
           display: flex;
@@ -722,9 +729,6 @@ class SexyLockCard extends HTMLElement {
           border-radius: 50%;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
-          flex: 1 1 auto;
-          min-height: 0;
-          min-width: 0;
         }
         
         .lock-icon {
