@@ -707,8 +707,8 @@ class SexyLockCard extends HTMLElement {
         .lock-content {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          align-items: stretch;
+          justify-content: space-between;
           gap: clamp(0.5em, 2vh, 1em);
           flex: 1 1 auto;
           min-height: 0;
@@ -716,13 +716,13 @@ class SexyLockCard extends HTMLElement {
           width: 100%;
           position: relative;
         }
-        
+
         .lock-icon-container {
-          flex: 0 1 auto;
+          flex: 1 1 auto;
           width: 100%;
           max-width: 100%;
+          height: 100%;
           max-height: 100%;
-          aspect-ratio: 1 / 1;
           overflow: hidden;
           display: flex;
           align-items: center;
@@ -731,12 +731,18 @@ class SexyLockCard extends HTMLElement {
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
+
         .lock-icon {
-          width: 100%;
           height: 100%;
+          width: auto;
+          max-width: 100%;
           fill: currentColor;
           transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .lock-icon svg {
+          width: 100%;
+          height: 100%;
         }
         
         .lock-ring-group {
