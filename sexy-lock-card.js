@@ -456,28 +456,35 @@ class SexyLockCard extends HTMLElement {
 
   /**
    * Get SVG icon for the current state
+   * Uses viewBox for natural responsive scaling
    */
   _getIconSVG(state) {
-    // Circle with a strip cut out - like a crescent/segment
-    // Each piece is LESS than a semicircle
-    // SVG is sized to fill the entire container (120px)
-    const svgSize = 120;
-    const centerX = svgSize / 2; // 60
-    const centerY = svgSize / 2; // 60
-    const radius = 37; // Smaller circle
-    const gap = 14; // Increased from 6 to 9 (50% wider)
+    // Use viewBox coordinates for scalability
+    // ViewBox: 0 0 100 100 (arbitrary square that will scale)
+    const viewBoxSize = 100;
+    const centerX = 50;
+    const centerY = 50;
+    const radius = 28; // Lock pieces radius
+    const gap = 12; // Gap width in viewBox units
+    const ringRadius = 46; // Ring radius - much larger than lock pieces
+    const ringWidth = 5; // Ring thickness in viewBox units (slightly thicker)
     
     // Calculate chord endpoints for the gap
-    // The gap cuts through the circle horizontally
     const halfGap = gap / 2;
-    
-    // Calculate where the chord intersects the circle
-    // Using Pythagorean theorem: x^2 + y^2 = r^2
-    // We know y (halfGap), solve for x
     const chordX = Math.sqrt(radius * radius - halfGap * halfGap);
     
-    // Top piece: less than a semicircle - the arc above the cut
-    // Goes from left edge of gap, around the top, to right edge of gap
+    // Ring circle (stroke, no fill)
+    const ring = `
+      <circle class="lock-ring" 
+              cx="${centerX}" 
+              cy="${centerY}" 
+              r="${ringRadius}" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="${ringWidth}"/>
+    `;
+    
+    // Top piece: arc above the cut
     const semiCircle1 = `
       <path class="semi-circle semi-circle-1" 
             d="M ${centerX - chordX} ${centerY - halfGap}
@@ -488,7 +495,7 @@ class SexyLockCard extends HTMLElement {
             stroke="none"/>
     `;
     
-    // Bottom piece: the arc below the cut
+    // Bottom piece: arc below the cut
     const semiCircle2 = `
       <path class="semi-circle semi-circle-2" 
             d="M ${centerX - chordX} ${centerY + halfGap}
@@ -499,33 +506,22 @@ class SexyLockCard extends HTMLElement {
             stroke="none"/>
     `;
     
-    // Special states
-    if (state === 'jammed') {
-      return `
-        <svg viewBox="0 0 ${svgSize} ${svgSize}">
-          <g class="lock-group">
-            ${semiCircle1}
-            ${semiCircle2}
-          </g>
-        </svg>
-      `;
-    }
-    
-    if (state === 'unknown' || state === 'unavailable') {
-      return `
-        <svg viewBox="0 0 ${svgSize} ${svgSize}">
-          <g class="lock-group">
-            ${semiCircle1}
-            ${semiCircle2}
-          </g>
-        </svg>
-      `;
-    }
-    
-    // Normal states - just the two half-circles with gap
+    // Return SVG with viewBox for responsive scaling
     return `
-      <svg viewBox="0 0 ${svgSize} ${svgSize}">
-        <g class="lock-group">
+      <svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <g class="lock-ring-group" transform-origin="${centerX} ${centerY}">
+          ${ring}
+        </g>
+        <g class="lock-group" transform-origin="${centerX} ${centerY}">
           ${semiCircle1}
           ${semiCircle2}
         </g>
@@ -621,27 +617,35 @@ class SexyLockCard extends HTMLElement {
       <style>
         :host {
           display: block;
+          padding: 0;
+          margin: 0;
           --state-inactive-color: var(--state-icon-color);
           --lock-locked-color: ${this._config?.color_locked || 'var(--state-lock-locked-color, var(--state-active-color, var(--success-color, #4caf50)))'};
           --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--state-lock-unlocked-color, var(--error-color, #f44336))'}; 
           --lock-transitioning-color: ${this._config?.color_transitioning || 'var(--warning-color, #ff9800)'};
           --lock-jammed-color: ${this._config?.color_jammed || 'var(--state-lock-jammed-color, var(--warning-color, #ff5722))'}; 
           --lock-unknown-color: ${this._config?.color_unknown || 'var(--state-unavailable-color, var(--disabled-text-color, #9e9e9e))'};
-          --lock-radius: 35;
+          
+          /* Responsive sizing variables */
+          --lock-slide-offset: ${this._config?.offset_slide || 0};
+          
+          /* Animation durations */
           --rotation-duration: ${this._config?.rotation_duration || 3000}ms;
           --slide-duration: ${this._config?.slide_duration || 1000}ms;
         }
         
         ha-card {
+          width: 100%;
           height: 100%;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
           position: relative;
+          padding: var(--ha-card-padding, 0);
         }
         
         .lock-card {
-          padding: 16px;
+          padding: 1em;
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
@@ -661,15 +665,19 @@ class SexyLockCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          flex: 1;
+          gap: clamp(0.5em, 2vh, 1em);
+          flex: 1 1 auto;
           min-height: 0;
+          min-width: 0;
           width: 100%;
+          position: relative;
         }
         
         .lock-icon-container {
-          width: min(60%, 200px);
-          aspect-ratio: 1;
+          flex: 1 1 0;
+          max-width: 100%;
+          max-height: 100%;
+          aspect-ratio: 1 / 1;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -685,9 +693,13 @@ class SexyLockCard extends HTMLElement {
           transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
+        .lock-ring-group {
+          transform-origin: 50px 50px;
+        }
+        
         .lock-group {
           transition: transform var(--rotation-duration) cubic-bezier(0.4, 0, 0.2, 1);
-          transform-origin: center;
+          transform-origin: 50px 50px;
         }
         
         /* Rotation states */
@@ -708,19 +720,18 @@ class SexyLockCard extends HTMLElement {
         }
         
         /* Slide is controlled ONLY by locked vs unlocked state */
-        /* Transitional states (locking/unlocking/requested) don't affect slide */
-        /* Slide position should already be at destination before rotation starts */
+        /* Slide uses percentage of container width to scale with SVG */
         
         /* Unlocked state - slide apart */
         .lock-icon.slide-unlocked .semi-circle-1 {
-          transform: translateX(calc(var(--lock-radius) * ${this._config?.offset_slide || 0} * 1px));
+          transform: translateX(calc(var(--lock-slide-offset) * 30%));
         }
         
         .lock-icon.slide-unlocked .semi-circle-2 {
-          transform: translateX(calc(var(--lock-radius) * ${this._config?.offset_slide || 0} * -1px));
+          transform: translateX(calc(var(--lock-slide-offset) * -30%));
         }
         
-        /* Locked state - slide together (symmetry) */
+        /* Locked state - slide together */
         .lock-icon.slide-locked .semi-circle-1 {
           transform: translateX(0);
         }
@@ -732,12 +743,10 @@ class SexyLockCard extends HTMLElement {
         /* State-specific colors */
         .lock-icon-container.locked {
           color: var(--lock-locked-color);
-          box-shadow: 0 0 0 5px var(--lock-locked-color);
         }
         
         .lock-icon-container.unlocked {
           color: var(--lock-unlocked-color);
-          box-shadow: 0 0 0 5px var(--lock-unlocked-color);
         }
         
         .lock-icon-container.locking,
@@ -747,85 +756,67 @@ class SexyLockCard extends HTMLElement {
           color: var(--lock-transitioning-color);
         }
         
-        /* Rotating gradient ring for REQUESTED states only */
-        .lock-icon-container.lock-requested,
-        .lock-icon-container.unlock-requested {
-          position: relative;
-          /* Keep the solid ring */
-          box-shadow: 0 0 0 5px var(--lock-transitioning-color);
-        }
-        
-        /* Static ring for locking/unlocking (no animation) */
-        .lock-icon-container.locking,
-        .lock-icon-container.unlocking {
-          box-shadow: 0 0 0 5px var(--lock-transitioning-color);
-        }
-        
-        /* Create rotating gradient overlay - always spinning when visible */
-        .lock-icon-container::before {
-          content: '';
-          position: absolute;
-          top: -5px;
-          left: -5px;
-          right: -5px;
-          bottom: -5px;
-          border-radius: 50%;
-          /* Linear gradient - bright band with darker rest */
-          background: linear-gradient(
-            0deg,
-            rgba(0, 0, 0, 0.4) 0%,
-            rgba(0, 0, 0, 0.4) 12.5%,
-            transparent 50%,
-            rgba(0, 0, 0, 0.4) 87.5%,
-            rgba(0, 0, 0, 0.4) 100%
-          );
-          /* Mask to show only the ring area */
-          mask: radial-gradient(circle at center, transparent 60px, white 60px);
-          -webkit-mask: radial-gradient(circle at center, transparent 60px, white 60px);
-          pointer-events: none;
-          z-index: 1;
-          opacity: 0;
-        }
-        
-        /* Show spinning gradient ONLY on requested states */
-        .lock-icon-container.lock-requested::before,
-        .lock-icon-container.unlock-requested::before {
-          opacity: 1;
-        }
-        
         .lock-icon-container.jammed {
           color: var(--lock-jammed-color);
-          box-shadow: 0 0 0 5px var(--lock-jammed-color);
-          animation: breathe 2s ease-in-out infinite;
         }
         
         .lock-icon-container.unknown,
         .lock-icon-container.unavailable {
           color: var(--lock-unknown-color);
-          box-shadow: 0 0 0 5px var(--lock-unknown-color);
-          animation: breathe-subtle 2s ease-in-out infinite;
         }
         
-        /* Animation for transitioning state */
-        .lock-icon-container.animating .lock-icon {
-          animation: none;
+        /* SVG ring styling */
+        .lock-ring {
+          transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        /* Ensure icon stays on top of gradient ring */
+        /* Rotating gradient overlay for REQUESTED states */
+        .lock-icon-container::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.5) 0%,
+            rgba(0, 0, 0, 0.5) 12.5%,
+            transparent 50%,
+            rgba(0, 0, 0, 0.5) 87.5%,
+            rgba(0, 0, 0, 0.5) 100%
+          );
+          pointer-events: none;
+          z-index: 1;
+          opacity: 0;
+        }
+        
+        .lock-icon-container.lock-requested::before,
+        .lock-icon-container.unlock-requested::before {
+          opacity: 1;
+        }
+        
+        .lock-icon-container.lock-requested::before {
+          animation: ring-rotate-cw ${this._config?.gradient_speed || 2}s linear infinite;
+        }
+        
+        .lock-icon-container.unlock-requested::before {
+          animation: ring-rotate-ccw ${this._config?.gradient_speed || 2}s linear infinite;
+        }
+        
+        /* Keep icon on top of gradient */
         .lock-icon-container.lock-requested .lock-icon,
         .lock-icon-container.unlock-requested .lock-icon {
           position: relative;
           z-index: 2;
         }
         
-        /* Lock-requested rotates gradient clockwise */
-        .lock-icon-container.lock-requested::before {
-          animation: ring-rotate-cw ${this._config?.gradient_speed || 2}s linear infinite;
+        /* Breathing animation for jammed/unknown states */
+        .lock-icon-container.jammed .lock-ring {
+          animation: breathe 2s ease-in-out infinite;
         }
         
-        /* Unlock-requested rotates gradient counterclockwise */
-        .lock-icon-container.unlock-requested::before {
-          animation: ring-rotate-ccw ${this._config?.gradient_speed || 2}s linear infinite;
+        .lock-icon-container.unknown .lock-ring,
+        .lock-icon-container.unavailable .lock-ring {
+          animation: breathe-subtle 2s ease-in-out infinite;
         }
         
         @keyframes ring-rotate-cw {
@@ -840,8 +831,8 @@ class SexyLockCard extends HTMLElement {
         
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-4px) rotate(-2deg); }
-          75% { transform: translateX(4px) rotate(2deg); }
+          25% { transform: translateX(-0.25em) rotate(-2deg); }
+          75% { transform: translateX(0.25em) rotate(2deg); }
         }
         
         @keyframes breathe {
@@ -855,18 +846,22 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-name {
-          font-size: clamp(14px, 4vw, 18px);
+          font-size: clamp(0.875rem, 4vw, 1.125rem);
           font-weight: 500;
           color: var(--primary-text-color);
           margin: 0;
           text-align: center;
+          flex-shrink: 0;
+          min-height: 0;
         }
         
         .lock-state-text {
-          font-size: clamp(12px, 3vw, 14px);
+          font-size: clamp(0.75rem, 3vw, 0.875rem);
           color: var(--secondary-text-color);
           margin: 0;
           text-align: center;
+          flex-shrink: 0;
+          min-height: 0;
         }
         
         .hidden {
