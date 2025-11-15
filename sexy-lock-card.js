@@ -718,9 +718,10 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon-container {
-          flex: 1 1 auto;
-          max-height: 100%;
+          flex: 0 1 auto;
           width: 100%;
+          max-width: 100%;
+          max-height: 100%;
           aspect-ratio: 1 / 1;
           overflow: hidden;
           display: flex;
