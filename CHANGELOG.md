@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ⚙️ Configurable rotation duration (500-10000ms, default 3000ms)
 - ⚙️ Configurable slide duration (100-5000ms, default 1000ms)
 - 🎨 Expandable sections for Color Settings and Actions in UI editor
+- 🎨 Home Assistant theme variable support with proper cascade
 
 ### Changed
 - 🎨 Increased lock icon size by 25% (radius 35 → 43.75)
@@ -19,15 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔄 Jammed state: 45° rotation with red breathing glow, removed wobble animation
 - 🎯 Card background now transparent, inherits from ha-card
 - 📐 Card now scales to fill container height like button-card
+- 🎨 Responsive icon sizing using min() with width, height, and viewport units
+- 📝 Text alignment centered for better layout
 
 ### Fixed
 - 🔧 Color picker now uses text input for proper hex color support
 - 🔧 All expandable sections now work independently
 - 🔧 Card height and layout now properly fills available space
+- 🎨 Theming now properly inherits HA CSS variables (--state-lock-*-color)
+- 🎨 Removed black background, card now transparent by default
 
 ### Technical
 - Animation durations now use CSS variables for dynamic updates
 - Card uses flexbox layout with height: 100% for proper scaling
+- CSS variables cascade: custom colors → --state-lock-{state}-color → domain colors → common colors
+- Icon uses aspect-ratio and min() for responsive sizing
+- Added --state-inactive-color support
 - Multiple accordion sections supported via querySelectorAll
 
 ## [1.2.0] - 2025-11-15

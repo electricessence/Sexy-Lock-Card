@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.1.1
+ * @version 1.2.1
  */
 
 class SexyLockCard extends HTMLElement {
@@ -21,6 +21,33 @@ class SexyLockCard extends HTMLElement {
     this._lastEntityState = null;
     this._userInitiated = false; // Track if state change was user-initiated
     this._pendingUserAction = null; // 'lock' or 'unlock'
+  }
+  
+  /**
+   * Compute state color using HA theme variables with fallbacks
+   * Similar to button-card's stateColorCss
+   */
+  _getStateColor(state) {
+    if (!this._hass || !state) return null;
+    
+    // Custom colors override theme
+    const customColors = {
+      'locked': this._config?.color_locked,
+      'unlocked': this._config?.color_unlocked,
+      'locking': this._config?.color_transitioning,
+      'unlocking': this._config?.color_transitioning,
+      'jammed': this._config?.color_jammed,
+      'unknown': this._config?.color_unknown,
+      'unavailable': this._config?.color_unknown,
+    };
+    
+    if (customColors[state]) {
+      return customColors[state];
+    }
+    
+    // Fall back to HA theme CSS variables
+    // These are set by computeStyle() but we provide defaults
+    return null; // Let CSS variables handle it
   }
 
   /**
@@ -594,11 +621,12 @@ class SexyLockCard extends HTMLElement {
       <style>
         :host {
           display: block;
-          --lock-locked-color: ${this._config?.color_locked || 'var(--success-color, #4caf50)'};
-          --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--error-color, #f44336)'};
+          --state-inactive-color: var(--state-icon-color);
+          --lock-locked-color: ${this._config?.color_locked || 'var(--state-lock-locked-color, var(--state-active-color, var(--success-color, #4caf50)))'};
+          --lock-unlocked-color: ${this._config?.color_unlocked || 'var(--state-lock-unlocked-color, var(--error-color, #f44336))'}; 
           --lock-transitioning-color: ${this._config?.color_transitioning || 'var(--warning-color, #ff9800)'};
-          --lock-jammed-color: ${this._config?.color_jammed || 'var(--warning-color, #ff5722)'};
-          --lock-unknown-color: ${this._config?.color_unknown || 'var(--disabled-text-color, #9e9e9e)'};
+          --lock-jammed-color: ${this._config?.color_jammed || 'var(--state-lock-jammed-color, var(--warning-color, #ff5722))'}; 
+          --lock-unknown-color: ${this._config?.color_unknown || 'var(--state-unavailable-color, var(--disabled-text-color, #9e9e9e))'};
           --lock-radius: 35;
           --rotation-duration: ${this._config?.rotation_duration || 3000}ms;
           --slide-duration: ${this._config?.slide_duration || 1000}ms;
@@ -608,11 +636,16 @@ class SexyLockCard extends HTMLElement {
           height: 100%;
           display: flex;
           flex-direction: column;
+          cursor: pointer;
+          overflow: hidden;
+          box-sizing: border-box;
+          position: relative;
+          justify-content: center;
+          align-items: center;
         }
         
         .lock-card {
           padding: 16px;
-          background: transparent;
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
@@ -636,8 +669,11 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon-container {
-          width: 120px;
-          height: 120px;
+          width: min(120px, 80%);
+          height: min(120px, 80%);
+          max-width: 200px;
+          max-height: 200px;
+          aspect-ratio: 1;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -648,8 +684,8 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon {
-          width: 120px;
-          height: 120px;
+          width: 100%;
+          height: 100%;
           fill: currentColor;
           transition: transform 2000ms cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -824,16 +860,18 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-name {
-          font-size: 18px;
+          font-size: clamp(14px, 4vw, 18px);
           font-weight: 500;
           color: var(--primary-text-color);
           margin: 0;
+          text-align: center;
         }
         
         .lock-state-text {
-          font-size: 14px;
+          font-size: clamp(12px, 3vw, 14px);
           color: var(--secondary-text-color);
           margin: 0;
+          text-align: center;
         }
         
         .hidden {
