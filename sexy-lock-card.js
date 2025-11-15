@@ -670,7 +670,7 @@ class SexyLockCard extends HTMLElement {
         
         ha-card {
           width: 100%;
-          height: auto;
+          height: 100%;
           cursor: pointer;
           overflow: hidden;
           box-sizing: border-box;
@@ -685,7 +685,7 @@ class SexyLockCard extends HTMLElement {
           cursor: pointer;
           user-select: none;
           transition: transform 0.1s ease;
-          height: auto;
+          height: 100%;
           width: 100%;
           display: flex;
           flex-direction: column;
@@ -713,14 +713,16 @@ class SexyLockCard extends HTMLElement {
         
         .lock-icon-container {
           width: 100%;
+          max-height: 100%;
           aspect-ratio: 1 / 1;
-          height: auto;
+          overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
           position: relative;
           transition: all 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+          flex: 1 1 auto;
           min-height: 0;
           min-width: 0;
         }
@@ -873,7 +875,7 @@ class SexyLockCard extends HTMLElement {
           color: var(--primary-text-color);
           margin: 0;
           text-align: center;
-          flex-shrink: 0;
+          flex: 0 0 auto;
           min-height: 0;
         }
         
@@ -882,7 +884,7 @@ class SexyLockCard extends HTMLElement {
           color: var(--secondary-text-color);
           margin: 0;
           text-align: center;
-          flex-shrink: 0;
+          flex: 0 0 auto;
           min-height: 0;
         }
         
