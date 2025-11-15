@@ -5,6 +5,26 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-14
+
+### Added
+- 🎨 **Visual Card Editor** - Full UI configuration without YAML editing
+- 📝 Entity picker with lock domain filtering
+- 🎚️ Interactive controls for all card options
+- ⚡ Real-time preview of configuration changes
+- 🎯 Action selectors for tap and hold actions
+- 📊 Animation duration slider with validation
+- 💡 Smart defaults and helpful descriptions for all options
+
+### Changed
+- Card now appears in Home Assistant card picker with preview
+- Enhanced card metadata with `getConfigElement()` and `getStubConfig()`
+
+### Technical
+- Added `SexyLockCardEditor` custom element
+- Implemented Home Assistant editor protocol
+- Full support for both UI and YAML configuration methods
+
 ## [1.0.0] - 2025-01-14
 
 ### Added
@@ -93,4 +113,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.1.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.1.0
 [1.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.0.0

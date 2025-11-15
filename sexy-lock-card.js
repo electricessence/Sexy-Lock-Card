@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 class SexyLockCard extends HTMLElement {
@@ -860,7 +860,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.0.0 ',
+  '%c SEXY-LOCK-CARD %c 1.1.0 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
