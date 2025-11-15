@@ -689,6 +689,38 @@ class SexyLockCard extends HTMLElement {
           box-sizing: border-box;
           position: relative;
           padding: var(--ha-card-padding, 4% 0);
+          --ha-ripple-color: var(
+            --lock-highlight-color,
+            var(
+              --lock-locked-color,
+              var(--state-icon-color, var(--primary-color))
+            )
+          );
+          --ha-ripple-hover-opacity: 0.06;
+          --ha-ripple-pressed-opacity: 0.14;
+        }
+
+        ha-card:focus {
+          outline: none;
+        }
+
+        ha-card::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: var(--ha-ripple-color);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 120ms ease;
+        }
+
+        ha-card:hover::after {
+          opacity: var(--ha-ripple-hover-opacity);
+        }
+
+        ha-card:active::after,
+        ha-card:focus-visible::after {
+          opacity: var(--ha-ripple-pressed-opacity);
         }
         
         .lock-card {
@@ -747,6 +779,12 @@ class SexyLockCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: transform 0.15s ease;
+        }
+
+        ha-card:hover .lock-icon-wrapper,
+        ha-card:focus-visible .lock-icon-wrapper {
+          transform: scale(1.03);
         }
 
         .lock-icon {
