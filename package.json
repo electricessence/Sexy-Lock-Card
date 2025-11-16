@@ -1,11 +1,12 @@
 {
   "name": "sexy-lock-card",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Animated lock card for Home Assistant with smooth state transitions",
   "main": "sexy-lock-card.js",
   "scripts": {
     "test": "node test/run-tests.js",
-    "serve": "pnpm dlx http-server -p 8000 -o test.html"
+    "serve": "pnpm dlx http-server -p 8000 -o test.html",
+    "bump": "pnpm version patch --no-git-tag-version"
   },
   "packageManager": "pnpm@9.0.0",
   "keywords": [

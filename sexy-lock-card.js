@@ -3,7 +3,6 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.2.5
  */
 
 class SexyLockCard extends HTMLElement {
@@ -1131,6 +1130,12 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="section-content">
         
         <div class="option">
+          <label>Unlock Direction</label>
+          <div class="description">Flip the entire animation horizontally to match your hardware</div>
+          <div class="unlock-direction-selector"></div>
+        </div>
+
+        <div class="option">
           <label>Animation Duration</label>
           <div class="description">Duration of lock/unlock animations in milliseconds</div>
           <div class="number-input">
@@ -1138,7 +1143,7 @@ class SexyLockCardEditor extends HTMLElement {
             <span>ms</span>
           </div>
         </div>
-        
+
         <div class="option">
           <label>Rotation Duration</label>
           <div class="description">Duration for lock rotation animation</div>
@@ -1147,7 +1152,7 @@ class SexyLockCardEditor extends HTMLElement {
             <span>ms</span>
           </div>
         </div>
-        
+
         <div class="option">
           <label>Slide Duration</label>
           <div class="description">Duration for semi-circle slide animation</div>
@@ -1158,9 +1163,12 @@ class SexyLockCardEditor extends HTMLElement {
         </div>
         
         <div class="option">
-          <label>Unlock Direction</label>
-          <div class="description">Flip the entire animation horizontally to match your hardware</div>
-          <div class="unlock-direction-selector"></div>
+          <label>Gradient Rotation Speed</label>
+          <div class="description">Speed of the spinning gradient during requested states</div>
+          <div class="number-input">
+            <div class="gradient-speed-input" style="flex: 1;"></div>
+            <span>seconds</span>
+          </div>
         </div>
         
         <div class="option">
@@ -1168,15 +1176,6 @@ class SexyLockCardEditor extends HTMLElement {
           <div class="description">Distance semi-circles slide apart when unlocked (0.0-1.0, can be negative)</div>
           <div class="number-input">
             <div class="offset-slide-input" style="flex: 1;"></div>
-          </div>
-        </div>
-        
-        <div class="option">
-          <label>Gradient Rotation Speed</label>
-          <div class="description">Speed of the spinning gradient during requested states</div>
-          <div class="number-input">
-            <div class="gradient-speed-input" style="flex: 1;"></div>
-            <span>seconds</span>
           </div>
         </div>
         
