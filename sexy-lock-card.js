@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.2.3
+ * @version 1.2.4
  */
 
 class SexyLockCard extends HTMLElement {
@@ -16,7 +16,7 @@ class SexyLockCard extends HTMLElement {
     // Internal state machine
     this._currentVisualState = 'unknown';
     this._targetState = null;
-    this._animationPhase = 'idle'; // idle, transitioning, complete
+    this._animationPhase = 'idle'; // idle or transitioning
     this._animationTimer = null;
     this._lastEntityState = null;
     this._userInitiated = false; // Track if state change was user-initiated
@@ -85,13 +85,6 @@ class SexyLockCard extends HTMLElement {
    */
   static getConfigElement() {
     return document.createElement('sexy-lock-card-editor');
-  }
-
-  /**
-   * Stub config for HA grid metadata and preview
-   */
-  static getStubConfig() {
-    return { entity: 'lock.front_door' };
   }
 
   /**
@@ -196,142 +189,12 @@ class SexyLockCard extends HTMLElement {
       }
     }
     
-    // Get the state path from current to target
-    const statePath = this._getStatePath(from, to);
-    
-    if (statePath.length > 1) {
-      // Animate through each state in the path
-      this._animateThroughPath(statePath);
-    } else {
-      // Direct transition
+    // Direct transition—match the state HA reports without inventing stops
+    if (from !== to) {
       this._currentVisualState = to;
       this._animationPhase = 'idle';
       this._updateVisuals();
     }
-  }
-
-  /**
-   * Get the state path from current state to target state
-   * State cycle: unlocked → lock-requested → locking → locked → unlock-requested → unlocking → unlocked
-   */
-  _getStatePath(from, to) {
-    // Define the full state cycle
-    const stateOrder = [
-      'unlocked',
-      'lock-requested',
-      'locking', 
-      'locked',
-      'unlock-requested',
-      'unlocking'
-    ];
-    
-    // Special states that don't participate in the cycle
-    if (to === 'jammed' || to === 'unknown' || to === 'unavailable') {
-      return [to];
-    }
-    
-    // Find positions in the cycle
-    const fromIndex = stateOrder.indexOf(from);
-    const toIndex = stateOrder.indexOf(to);
-    
-    // If either state is not in the cycle, do direct transition
-    if (fromIndex === -1 || toIndex === -1) {
-      return [to];
-    }
-    
-    // If already at target, no transition needed
-    if (fromIndex === toIndex) {
-      return [];
-    }
-    
-    // Skip lock-requested/unlock-requested when not user-initiated
-    // If backend goes directly to locking/unlocking, don't show requested state
-    if (!this._userInitiated) {
-      if (from === 'unlocked' && to === 'locking') {
-        return [to]; // Direct jump, skip lock-requested
-      }
-      if (from === 'locked' && to === 'unlocking') {
-        return [to]; // Direct jump, skip unlock-requested
-      }
-    }
-    
-    // Calculate the path
-    const path = [];
-    let currentIndex = fromIndex;
-    
-    // Calculate distances for both directions
-    let forwardDistance, backwardDistance;
-    
-    if (toIndex > fromIndex) {
-      forwardDistance = toIndex - fromIndex;
-      backwardDistance = (fromIndex + stateOrder.length - toIndex);
-    } else {
-      forwardDistance = (toIndex + stateOrder.length - fromIndex);
-      backwardDistance = fromIndex - toIndex;
-    }
-    
-    // Choose the shorter path
-    const goForward = forwardDistance <= backwardDistance;
-    
-    if (goForward) {
-      // Move forward through states
-      while (currentIndex !== toIndex) {
-        currentIndex = (currentIndex + 1) % stateOrder.length;
-        path.push(stateOrder[currentIndex]);
-      }
-    } else {
-      // Move backward through states
-      while (currentIndex !== toIndex) {
-        currentIndex = (currentIndex - 1 + stateOrder.length) % stateOrder.length;
-        path.push(stateOrder[currentIndex]);
-      }
-    }
-    
-    return path;
-  }
-
-  /**
-   * Animate through a path of states
-   */
-  _animateThroughPath(path) {
-    if (path.length === 0) return;
-    
-    const duration = this._config.animation_duration;
-    const stepDuration = duration / path.length;
-    
-    let currentStep = 0;
-    
-    const animateNextStep = () => {
-      if (currentStep >= path.length) {
-        this._animationPhase = 'idle';
-        this._userInitiated = false;
-        this._pendingUserAction = null;
-        this._updateVisuals();
-        return;
-      }
-      
-      this._currentVisualState = path[currentStep];
-      this._animationPhase = currentStep < path.length - 1 ? 'transitioning' : 'complete';
-      this._updateVisuals();
-      
-      currentStep++;
-      
-      if (currentStep < path.length) {
-        this._animationTimer = setTimeout(animateNextStep, stepDuration);
-      } else {
-        // Final state reached
-        this._animationTimer = setTimeout(() => {
-          this._animationPhase = 'idle';
-          this._userInitiated = false;
-          this._pendingUserAction = null;
-          this._updateVisuals();
-        }, stepDuration);
-      }
-    };
-    
-    // Start animation
-    this._animationPhase = 'transitioning';
-    animateNextStep();
   }
 
   /**
@@ -1763,7 +1626,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.2.1 ',
+  '%c SEXY-LOCK-CARD %c 1.2.4 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
