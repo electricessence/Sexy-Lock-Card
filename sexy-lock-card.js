@@ -74,6 +74,11 @@ class SexyLockCard extends HTMLElement {
       color_unknown: config.color_unknown || null,
       tap_action: config.tap_action || { action: 'toggle' },
       hold_action: config.hold_action || { action: 'more-info' },
+      // Door/contact sensor integration (optional)
+      door_entity: config.door_entity || null,
+      door_name: config.door_name || null,
+      door_show_status: config.door_show_status !== false,
+      door_alert_mode: config.door_alert_mode || 'none', // none | warn | block
     };
     
     this._render();
@@ -1204,6 +1209,37 @@ class SexyLockCardEditor extends HTMLElement {
             <div class="show-state-switch"></div>
           </div>
         </div>
+
+        <div class="section-header expandable">Door Sensor (Optional)</div>
+        <div class="section-content door-section">
+          <div class="option">
+            <label>Door / Contact Entity</label>
+            <div class="description">Binary sensor that reports the door or contact state</div>
+            <div class="door-entity-input"></div>
+          </div>
+
+          <div class="option">
+            <label>Door Label</label>
+            <div class="description">Override name shown for the door status badge (optional)</div>
+            <div class="door-name-input"></div>
+          </div>
+
+          <div class="option">
+            <div class="switch-row">
+              <div class="label-wrapper">
+                <label>Show Door Status</label>
+                <div class="description">Display a badge or text when a door entity is configured</div>
+              </div>
+              <div class="door-show-status-switch"></div>
+            </div>
+          </div>
+
+          <div class="option">
+            <label>Door Alert Mode</label>
+            <div class="description">Choose how the card reacts when the door is open</div>
+            <div class="door-alert-mode-selector"></div>
+          </div>
+        </div>
         
         <div class="section-header expandable">Color Settings</div>
         <div class="section-content">
@@ -1375,6 +1411,67 @@ class SexyLockCardEditor extends HTMLElement {
     
     const showStateContainer = this.shadowRoot.querySelector('.show-state-switch');
     showStateContainer.appendChild(showStateSwitch);
+
+    // Door entity selector
+    const doorEntitySelector = document.createElement('ha-selector');
+    doorEntitySelector.hass = this._hass;
+    doorEntitySelector.selector = {
+      entity: {
+        domain: ['binary_sensor', 'sensor'],
+        device_class: ['door', 'opening', 'window', 'lock']
+      }
+    };
+    doorEntitySelector.value = this._config.door_entity || '';
+    doorEntitySelector.label = 'Door Entity';
+    doorEntitySelector.addEventListener('value-changed', this._doorEntityChanged.bind(this));
+    this._doorEntitySelector = doorEntitySelector;
+    const doorEntityContainer = this.shadowRoot.querySelector('.door-entity-input');
+    if (doorEntityContainer) {
+      doorEntityContainer.appendChild(doorEntitySelector);
+    }
+
+    // Door name input
+    const doorNameInput = document.createElement('ha-selector');
+    doorNameInput.hass = this._hass;
+    doorNameInput.selector = { text: {} };
+    doorNameInput.value = this._config.door_name || '';
+    doorNameInput.label = 'Door Label';
+    doorNameInput.addEventListener('value-changed', this._doorNameChanged.bind(this));
+    this._doorNameInput = doorNameInput;
+    const doorNameContainer = this.shadowRoot.querySelector('.door-name-input');
+    if (doorNameContainer) {
+      doorNameContainer.appendChild(doorNameInput);
+    }
+
+    // Door show status switch
+    const doorShowStatusSwitch = document.createElement('ha-switch');
+    doorShowStatusSwitch.checked = this._config.door_show_status !== false;
+    doorShowStatusSwitch.addEventListener('change', this._doorShowStatusChanged.bind(this));
+    this._doorShowStatusSwitch = doorShowStatusSwitch;
+    const doorShowStatusContainer = this.shadowRoot.querySelector('.door-show-status-switch');
+    if (doorShowStatusContainer) {
+      doorShowStatusContainer.appendChild(doorShowStatusSwitch);
+    }
+
+    // Door alert mode selector
+    const doorAlertSelector = document.createElement('ha-selector');
+    doorAlertSelector.hass = this._hass;
+    doorAlertSelector.selector = {
+      select: {
+        options: [
+          { value: 'none', label: 'None (informational only)' },
+          { value: 'warn', label: 'Warn when door open' },
+          { value: 'block', label: 'Warn and block lock toggle' }
+        ]
+      }
+    };
+    doorAlertSelector.value = this._config.door_alert_mode || 'none';
+    doorAlertSelector.addEventListener('value-changed', this._doorAlertModeChanged.bind(this));
+    this._doorAlertModeSelector = doorAlertSelector;
+    const doorAlertContainer = this.shadowRoot.querySelector('.door-alert-mode-selector');
+    if (doorAlertContainer) {
+      doorAlertContainer.appendChild(doorAlertSelector);
+    }
 
     // Animation duration
     const animationInput = document.createElement('ha-selector');
@@ -1558,6 +1655,18 @@ class SexyLockCardEditor extends HTMLElement {
     if (this._showStateSwitch) {
       this._showStateSwitch.checked = this._config.show_state !== false;
     }
+    if (this._doorEntitySelector) {
+      this._doorEntitySelector.value = this._config.door_entity || '';
+    }
+    if (this._doorNameInput) {
+      this._doorNameInput.value = this._config.door_name || '';
+    }
+    if (this._doorShowStatusSwitch) {
+      this._doorShowStatusSwitch.checked = this._config.door_show_status !== false;
+    }
+    if (this._doorAlertModeSelector) {
+      this._doorAlertModeSelector.value = this._config.door_alert_mode || 'none';
+    }
     if (this._animationDurationInput) {
       this._animationDurationInput.value = this._config.animation_duration || 400;
     }
@@ -1666,6 +1775,38 @@ class SexyLockCardEditor extends HTMLElement {
     if (!this._config) return;
     
     const newConfig = { ...this._config, hold_action: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
+  _doorEntityChanged(ev) {
+    if (!this._config) return;
+    const value = ev.detail.value;
+    const newConfig = { ...this._config, door_entity: value || null };
+    this._updateConfig(newConfig);
+  }
+
+  _doorNameChanged(ev) {
+    if (!this._config) return;
+    const value = ev.detail.value;
+    const newConfig = { ...this._config };
+    if (value) {
+      newConfig.door_name = value;
+    } else {
+      delete newConfig.door_name;
+    }
+    this._updateConfig(newConfig);
+  }
+
+  _doorShowStatusChanged(ev) {
+    if (!this._config) return;
+    const newConfig = { ...this._config, door_show_status: ev.target.checked };
+    this._updateConfig(newConfig);
+  }
+
+  _doorAlertModeChanged(ev) {
+    if (!this._config) return;
+    const value = ev.detail.value || 'none';
+    const newConfig = { ...this._config, door_alert_mode: value };
     this._updateConfig(newConfig);
   }
   
