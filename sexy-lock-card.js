@@ -3,7 +3,7 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.2.4
+ * @version 1.2.5
  */
 
 class SexyLockCard extends HTMLElement {
@@ -531,6 +531,8 @@ class SexyLockCard extends HTMLElement {
   _render() {
     if (!this.shadowRoot) return;
     
+    const directionClass = this._config?.unlock_direction === 'clockwise' ? ' flip-horizontal' : '';
+    
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -661,11 +663,17 @@ class SexyLockCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           transition: transform 0.15s ease;
+          --lock-direction-scale: 1;
+          transform: scaleX(var(--lock-direction-scale));
+        }
+
+        .lock-icon-wrapper.flip-horizontal {
+          --lock-direction-scale: -1;
         }
 
         ha-card:hover .lock-icon-wrapper,
         ha-card:focus-visible .lock-icon-wrapper {
-          transform: scale(1.03);
+          transform: scaleX(var(--lock-direction-scale)) scale(1.03);
         }
 
         .lock-icon {
@@ -690,11 +698,11 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon.rotate-unlocked .lock-group {
-          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}90deg);
+          transform: rotate(-90deg);
         }
         
         .lock-icon.rotate-45 .lock-group {
-          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}45deg);
+          transform: rotate(-45deg);
         }
         
         .semi-circle {
@@ -837,7 +845,7 @@ class SexyLockCard extends HTMLElement {
       <ha-card class="lock-card">
         <div class="lock-content">
           <div class="lock-icon-container">
-            <div class="lock-icon-wrapper">
+            <div class="lock-icon-wrapper${directionClass}">
               <div class="lock-icon">${this._getIconSVG(this._currentVisualState)}</div>
             </div>
           </div>
@@ -1151,7 +1159,7 @@ class SexyLockCardEditor extends HTMLElement {
         
         <div class="option">
           <label>Unlock Direction</label>
-          <div class="description">Direction to rotate when unlocking</div>
+          <div class="description">Flip the entire animation horizontally to match your hardware</div>
           <div class="unlock-direction-selector"></div>
         </div>
         
@@ -1626,7 +1634,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.2.4 ',
+  '%c SEXY-LOCK-CARD %c 1.2.5 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );

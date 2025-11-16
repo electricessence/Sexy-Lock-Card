@@ -5,6 +5,15 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2025-11-15
+
+### Added
+- ↔️ `unlock_direction` option now mirrors the entire lock icon horizontally for true clockwise/counterclockwise parity.
+- 🧪 `test.html` demo includes buttons to flip the direction live so you can verify behavior without HA.
+
+### Changed
+- 🎛️ Rotation math simplified internally; flipping now uses a CSS transform so the animations stay in sync.
+
 ## [1.2.4] - 2025-11-15
 
 ### Changed
@@ -189,3 +198,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.1.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.1.0
 [1.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.0.0
 [1.2.4]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.4
+[1.2.5]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.5
