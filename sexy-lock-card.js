@@ -3,7 +3,6 @@
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
- * @version 1.2.3
  */
 
 class SexyLockCard extends HTMLElement {
@@ -16,7 +15,7 @@ class SexyLockCard extends HTMLElement {
     // Internal state machine
     this._currentVisualState = 'unknown';
     this._targetState = null;
-    this._animationPhase = 'idle'; // idle, transitioning, complete
+    this._animationPhase = 'idle'; // idle or transitioning
     this._animationTimer = null;
     this._lastEntityState = null;
     this._userInitiated = false; // Track if state change was user-initiated
@@ -90,13 +89,6 @@ class SexyLockCard extends HTMLElement {
    */
   static getConfigElement() {
     return document.createElement('sexy-lock-card-editor');
-  }
-
-  /**
-   * Stub config for HA grid metadata and preview
-   */
-  static getStubConfig() {
-    return { entity: 'lock.front_door' };
   }
 
   /**
@@ -201,142 +193,12 @@ class SexyLockCard extends HTMLElement {
       }
     }
     
-    // Get the state path from current to target
-    const statePath = this._getStatePath(from, to);
-    
-    if (statePath.length > 1) {
-      // Animate through each state in the path
-      this._animateThroughPath(statePath);
-    } else {
-      // Direct transition
+    // Direct transition—match the state HA reports without inventing stops
+    if (from !== to) {
       this._currentVisualState = to;
       this._animationPhase = 'idle';
       this._updateVisuals();
     }
-  }
-
-  /**
-   * Get the state path from current state to target state
-   * State cycle: unlocked → lock-requested → locking → locked → unlock-requested → unlocking → unlocked
-   */
-  _getStatePath(from, to) {
-    // Define the full state cycle
-    const stateOrder = [
-      'unlocked',
-      'lock-requested',
-      'locking', 
-      'locked',
-      'unlock-requested',
-      'unlocking'
-    ];
-    
-    // Special states that don't participate in the cycle
-    if (to === 'jammed' || to === 'unknown' || to === 'unavailable') {
-      return [to];
-    }
-    
-    // Find positions in the cycle
-    const fromIndex = stateOrder.indexOf(from);
-    const toIndex = stateOrder.indexOf(to);
-    
-    // If either state is not in the cycle, do direct transition
-    if (fromIndex === -1 || toIndex === -1) {
-      return [to];
-    }
-    
-    // If already at target, no transition needed
-    if (fromIndex === toIndex) {
-      return [];
-    }
-    
-    // Skip lock-requested/unlock-requested when not user-initiated
-    // If backend goes directly to locking/unlocking, don't show requested state
-    if (!this._userInitiated) {
-      if (from === 'unlocked' && to === 'locking') {
-        return [to]; // Direct jump, skip lock-requested
-      }
-      if (from === 'locked' && to === 'unlocking') {
-        return [to]; // Direct jump, skip unlock-requested
-      }
-    }
-    
-    // Calculate the path
-    const path = [];
-    let currentIndex = fromIndex;
-    
-    // Calculate distances for both directions
-    let forwardDistance, backwardDistance;
-    
-    if (toIndex > fromIndex) {
-      forwardDistance = toIndex - fromIndex;
-      backwardDistance = (fromIndex + stateOrder.length - toIndex);
-    } else {
-      forwardDistance = (toIndex + stateOrder.length - fromIndex);
-      backwardDistance = fromIndex - toIndex;
-    }
-    
-    // Choose the shorter path
-    const goForward = forwardDistance <= backwardDistance;
-    
-    if (goForward) {
-      // Move forward through states
-      while (currentIndex !== toIndex) {
-        currentIndex = (currentIndex + 1) % stateOrder.length;
-        path.push(stateOrder[currentIndex]);
-      }
-    } else {
-      // Move backward through states
-      while (currentIndex !== toIndex) {
-        currentIndex = (currentIndex - 1 + stateOrder.length) % stateOrder.length;
-        path.push(stateOrder[currentIndex]);
-      }
-    }
-    
-    return path;
-  }
-
-  /**
-   * Animate through a path of states
-   */
-  _animateThroughPath(path) {
-    if (path.length === 0) return;
-    
-    const duration = this._config.animation_duration;
-    const stepDuration = duration / path.length;
-    
-    let currentStep = 0;
-    
-    const animateNextStep = () => {
-      if (currentStep >= path.length) {
-        this._animationPhase = 'idle';
-        this._userInitiated = false;
-        this._pendingUserAction = null;
-        this._updateVisuals();
-        return;
-      }
-      
-      this._currentVisualState = path[currentStep];
-      this._animationPhase = currentStep < path.length - 1 ? 'transitioning' : 'complete';
-      this._updateVisuals();
-      
-      currentStep++;
-      
-      if (currentStep < path.length) {
-        this._animationTimer = setTimeout(animateNextStep, stepDuration);
-      } else {
-        // Final state reached
-        this._animationTimer = setTimeout(() => {
-          this._animationPhase = 'idle';
-          this._userInitiated = false;
-          this._pendingUserAction = null;
-          this._updateVisuals();
-        }, stepDuration);
-      }
-    };
-    
-    // Start animation
-    this._animationPhase = 'transitioning';
-    animateNextStep();
   }
 
   /**
@@ -356,7 +218,31 @@ class SexyLockCard extends HTMLElement {
       stateEl.textContent = this._getStateLabel(entity.state);
     }
     
+    this._syncVisualStateWithEntity(entity);
     this._updateVisuals();
+  }
+
+  /**
+   * Ensure the visual state never drifts from the actual entity state.
+   * If HA says we're in a stable state (locked/unlocked/etc.), snap the
+   * animation to that state and clear any lingering timers.
+   */
+  _syncVisualStateWithEntity(entity) {
+    if (!entity) return;
+    const normalized = this._normalizeState(entity.state);
+    const stableStates = new Set(['locked', 'unlocked', 'jammed', 'unknown', 'unavailable']);
+    if (!stableStates.has(normalized)) {
+      return;
+    }
+
+    if (this._currentVisualState !== normalized) {
+      if (this._animationTimer) {
+        clearTimeout(this._animationTimer);
+        this._animationTimer = null;
+      }
+      this._currentVisualState = normalized;
+      this._animationPhase = 'idle';
+    }
   }
 
   /**
@@ -649,6 +535,8 @@ class SexyLockCard extends HTMLElement {
   _render() {
     if (!this.shadowRoot) return;
     
+    const directionClass = this._config?.unlock_direction === 'clockwise' ? ' flip-horizontal' : '';
+    
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -694,13 +582,7 @@ class SexyLockCard extends HTMLElement {
           box-sizing: border-box;
           position: relative;
           padding: var(--ha-card-padding, 4% 0);
-          --ha-ripple-color: var(
-            --lock-highlight-color,
-            var(
-              --lock-locked-color,
-              var(--state-icon-color, var(--primary-color))
-            )
-          );
+          --ha-ripple-color: var(--state-color, var(--state-icon-color, var(--primary-color)));
           --ha-ripple-hover-opacity: 0.06;
           --ha-ripple-pressed-opacity: 0.14;
         }
@@ -785,11 +667,17 @@ class SexyLockCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           transition: transform 0.15s ease;
+          --lock-direction-scale: 1;
+          transform: scaleX(var(--lock-direction-scale));
+        }
+
+        .lock-icon-wrapper.flip-horizontal {
+          --lock-direction-scale: -1;
         }
 
         ha-card:hover .lock-icon-wrapper,
         ha-card:focus-visible .lock-icon-wrapper {
-          transform: scale(1.03);
+          transform: scaleX(var(--lock-direction-scale)) scale(1.03);
         }
 
         .lock-icon {
@@ -814,11 +702,11 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-icon.rotate-unlocked .lock-group {
-          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}90deg);
+          transform: rotate(-90deg);
         }
         
         .lock-icon.rotate-45 .lock-group {
-          transform: rotate(${this._config?.unlock_direction === 'counterclockwise' ? '-' : ''}45deg);
+          transform: rotate(-45deg);
         }
         
         .semi-circle {
@@ -961,7 +849,7 @@ class SexyLockCard extends HTMLElement {
       <ha-card class="lock-card">
         <div class="lock-content">
           <div class="lock-icon-container">
-            <div class="lock-icon-wrapper">
+            <div class="lock-icon-wrapper${directionClass}">
               <div class="lock-icon">${this._getIconSVG(this._currentVisualState)}</div>
             </div>
           </div>
@@ -1278,6 +1166,12 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="section-content">
         
         <div class="option">
+          <label>Unlock Direction</label>
+          <div class="description">Flip the entire animation horizontally to match your hardware</div>
+          <div class="unlock-direction-selector"></div>
+        </div>
+
+        <div class="option">
           <label>Animation Duration</label>
           <div class="description">Duration of lock/unlock animations in milliseconds</div>
           <div class="number-input">
@@ -1285,7 +1179,7 @@ class SexyLockCardEditor extends HTMLElement {
             <span>ms</span>
           </div>
         </div>
-        
+
         <div class="option">
           <label>Rotation Duration</label>
           <div class="description">Duration for lock rotation animation</div>
@@ -1294,7 +1188,7 @@ class SexyLockCardEditor extends HTMLElement {
             <span>ms</span>
           </div>
         </div>
-        
+
         <div class="option">
           <label>Slide Duration</label>
           <div class="description">Duration for semi-circle slide animation</div>
@@ -1305,9 +1199,12 @@ class SexyLockCardEditor extends HTMLElement {
         </div>
         
         <div class="option">
-          <label>Unlock Direction</label>
-          <div class="description">Direction to rotate when unlocking</div>
-          <div class="unlock-direction-selector"></div>
+          <label>Gradient Rotation Speed</label>
+          <div class="description">Speed of the spinning gradient during requested states</div>
+          <div class="number-input">
+            <div class="gradient-speed-input" style="flex: 1;"></div>
+            <span>seconds</span>
+          </div>
         </div>
         
         <div class="option">
@@ -1315,15 +1212,6 @@ class SexyLockCardEditor extends HTMLElement {
           <div class="description">Distance semi-circles slide apart when unlocked (0.0-1.0, can be negative)</div>
           <div class="number-input">
             <div class="offset-slide-input" style="flex: 1;"></div>
-          </div>
-        </div>
-        
-        <div class="option">
-          <label>Gradient Rotation Speed</label>
-          <div class="description">Speed of the spinning gradient during requested states</div>
-          <div class="number-input">
-            <div class="gradient-speed-input" style="flex: 1;"></div>
-            <span>seconds</span>
           </div>
         </div>
         
@@ -1886,7 +1774,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.2.1 ',
+  '%c SEXY-LOCK-CARD %c 1.2.5 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
