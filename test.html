@@ -193,6 +193,12 @@ Animation Phase: idle</pre>
         <button onclick="setVisualState('lock-requested')" style="background: #ff9800;">lock-requested</button>
         <button onclick="setVisualState('unlock-requested')" style="background: #ff9800;">unlock-requested</button>
       </div>
+
+      <h3>Unlock Direction</h3>
+      <div class="button-group">
+        <button onclick="setDirection('counterclockwise')">Counterclockwise (Default)</button>
+        <button onclick="setDirection('clockwise')" class="secondary">Clockwise (Flip)</button>
+      </div>
       
       <h3>Test Scenarios</h3>
       <div class="button-group">
@@ -234,14 +240,21 @@ Animation Phase: idle</pre>
     
     // Initialize card
     const card = document.getElementById('testCard');
-    card.setConfig({
+    const cardConfig = {
       entity: 'lock.test_lock',
       name: 'Test Lock',
       show_name: true,
       show_state: true,
-      animation_duration: 400
-    });
-    card.hass = window.mockHass;
+      animation_duration: 400,
+      unlock_direction: 'counterclockwise'
+    };
+
+    function applyConfig() {
+      card.setConfig(cardConfig);
+      card.hass = window.mockHass;
+    }
+
+    applyConfig();
     
     // Expose functions globally
     window.simulateTap = function() {
@@ -276,6 +289,13 @@ Animation Phase: idle</pre>
       // Directly set the visual state for testing animations
       card._currentVisualState = state;
       card._updateVisuals();
+      updateStateInfo();
+    };
+
+    window.setDirection = function(direction) {
+      console.log(`Setting unlock direction to: ${direction}`);
+      cardConfig.unlock_direction = direction;
+      applyConfig();
       updateStateInfo();
     };
     
@@ -360,6 +380,7 @@ Animation Phase: idle</pre>
 Visual State: ${visualState}
 Animation Phase: ${animationPhase}
 User Action: ${userAction}
+    Unlock Direction: ${cardConfig.unlock_direction}
 Last Updated: ${new Date().toLocaleTimeString()}`;
     }
     
