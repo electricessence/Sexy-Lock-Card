@@ -1,5 +1,0 @@
-# Basic Sexy Lock Card Configuration
-# Minimal setup - just specify the entity
-
-type: custom:sexy-lock-card
-entity: lock.front_door

@@ -13,7 +13,20 @@ A polished Lovelace card that treats your locks like first-class citizens—door
 - 🔋 **Low battery pill** – optional entity + threshold draws a color-mapped vertical gauge in any corner when the level drops.
 - 🌀 **Smart animations** – snappy direct locked↔unlocked rotation, smooth staged slide/rotation choreography everywhere else.
 - 🧪 **Local harness** – `test.html` simulates locks, door sensors, and batteries without Home Assistant.
-- 📐 **Grid-friendly footprint** – defaults to a 2×2 cell size in dashboard grid layouts, just like button-card.
+- 📐 **Grid-friendly footprint** – defaults to a 2×6 span so it has breathing room without manual sizing tweaks.
+
+## Visual States
+
+|  |  |  |  |  |
+| --- | --- | --- | --- | --- |
+| _Door open_ | _Unlocked_ | _Lock requested_ | _Locking_ | _Locked_ |
+| ![Door open state screenshot](sample-glyph/open.png) | ![Unlocked state screenshot](sample-glyph/unlocked.png) | ![Lock requested state screenshot](sample-glyph/lock-requested.png) | ![Locking state screenshot](sample-glyph/locking.png) | ![Locked state screenshot](sample-glyph/locked.png) |
+
+### Battery Indicator
+
+|  |  |
+| --- | --- |
+| Even the low battery pill gets some love—position it in any corner and let the color-coded fill call attention to the percentage without cluttering your layout. | ![Battery indicator screenshot](sample-glyph/battery-indicator.png) |
 
 ## Installation
 
@@ -51,7 +64,7 @@ battery_entity: sensor.front_door_lock_battery # optional
 | `tap_action_locked` / `tap_action_unlocked` | Override tap behaviors per stable state; set action `none` to disable. |
 | `requested_timeout` | Milliseconds before a requested state snaps back if HA never confirms it (default 15s). |
 
-All other legacy options (custom colors, animation durations, slide offset, gradient speed, unlock direction, etc.) still work and are exposed in the visual editor. Full details live in [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) and the [`examples/`](examples) folder.
+All other legacy options (custom colors, animation durations, slide offset, gradient speed, unlock direction, etc.) still work and are exposed in the visual editor. Full details live in [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md).
 
 ## Development & Testing
 
