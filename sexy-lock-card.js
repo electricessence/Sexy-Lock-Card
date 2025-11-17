@@ -127,9 +127,17 @@ class SexyLockCard extends HTMLElement {
   /**
    * Return stub config for card picker
    */
-  static getStubConfig() {
+  static getStubConfig(hass, entities, entitiesFallback) {
+    const availableEntities = [
+      ...(entities || []),
+      ...(entitiesFallback || []),
+      ...Object.keys(hass?.states || {}),
+    ];
+    const lockEntity = availableEntities.find((entityId) => typeof entityId === 'string' && entityId.startsWith('lock.'));
+    const friendlyName = lockEntity && hass?.states?.[lockEntity]?.attributes?.friendly_name;
     return {
-      entity: 'lock.example',
+      entity: lockEntity || 'lock.front_door',
+      name: friendlyName || 'Sexy Lock',
       show_name: true,
       show_state: true,
       animation_duration: 400,
@@ -1302,7 +1310,7 @@ class SexyLockCard extends HTMLElement {
   getGridOptions() {
     return {
       rows: 2,
-      columns: 2,
+      columns: 6,
       min_rows: 2,
       min_columns: 2,
     };
@@ -1421,6 +1429,36 @@ class SexyLockCardEditor extends HTMLElement {
         paper-input,
         ha-textfield {
           width: 100%;
+        }
+
+        .color-picker-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .color-picker-row input[type="color"] {
+          appearance: none;
+          border: none;
+          padding: 0;
+          width: 48px;
+          height: 32px;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .color-picker-row input[type="color"]::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+
+        .color-picker-row input[type="color"]::-webkit-color-swatch,
+        .color-picker-row input[type="color"]::-moz-color-swatch {
+          border-radius: 6px;
+          border: 1px solid var(--divider-color);
+        }
+
+        .color-picker-row ha-textfield {
+          flex: 1;
         }
         
         .number-input {
@@ -1843,26 +1881,56 @@ class SexyLockCardEditor extends HTMLElement {
       { name: 'jammed', default: '#ff5722', label: 'Jammed Color' },
       { name: 'unknown', default: '#9e9e9e', label: 'Unknown Color' }
     ];
+
+    this._colorInputs = {};
     
     colorConfigs.forEach(colorConfig => {
-      const colorInput = document.createElement('ha-selector');
-      colorInput.hass = this._hass;
-      colorInput.selector = { 
-        text: { 
-          type: 'text'
-        } 
-      };
-      colorInput.value = this._config[`color_${colorConfig.name}`] || colorConfig.default;
-      colorInput.label = colorConfig.label;
-      colorInput.addEventListener('value-changed', (e) => {
-        this._colorChanged(colorConfig.name, e);
-      });
-      this._colorInputs[colorConfig.name] = colorInput;
-      
-      const colorContainer = this.shadowRoot.querySelector(`.color-${colorConfig.name}-input`);
-      if (colorContainer) {
-        colorContainer.appendChild(colorInput);
+      const container = this.shadowRoot.querySelector(`.color-${colorConfig.name}-input`);
+      if (!container) {
+        return;
       }
+
+      const row = document.createElement('div');
+      row.classList.add('color-picker-row');
+
+      const colorPicker = document.createElement('input');
+      colorPicker.type = 'color';
+      colorPicker.ariaLabel = colorConfig.label;
+
+      const textInput = document.createElement('ha-textfield');
+      textInput.label = colorConfig.label;
+      textInput.placeholder = colorConfig.default;
+
+      const currentValue = this._config[`color_${colorConfig.name}`] || colorConfig.default;
+      const normalizedDefault = this._normalizeHexColor(colorConfig.default) || '#ffffff';
+      const normalizedCurrent = this._normalizeHexColor(currentValue) || normalizedDefault;
+      colorPicker.value = normalizedCurrent;
+      textInput.value = currentValue;
+
+      colorPicker.addEventListener('input', (event) => {
+        const value = event.target.value;
+        textInput.value = value;
+        this._colorChanged(colorConfig.name, value);
+      });
+
+      textInput.addEventListener('value-changed', (event) => {
+        const value = event.detail.value;
+        this._colorChanged(colorConfig.name, value);
+        const normalized = this._normalizeHexColor(value);
+        if (normalized) {
+          colorPicker.value = normalized;
+        }
+      });
+
+      row.appendChild(colorPicker);
+      row.appendChild(textInput);
+      container.appendChild(row);
+
+      this._colorInputs[colorConfig.name] = {
+        picker: colorPicker,
+        text: textInput,
+        default: colorConfig.default,
+      };
     });
 
     const tapLockedSelector = document.createElement('ha-selector');
@@ -2064,16 +2132,15 @@ class SexyLockCardEditor extends HTMLElement {
     if (this._requestedTimeoutInput) {
       this._requestedTimeoutInput.value = this._config.requested_timeout !== undefined ? this._config.requested_timeout : 4000;
     }
-    Object.entries(this._colorInputs).forEach(([key, input]) => {
-      if (input) {
-        const defaults = {
-          locked: '#4caf50',
-          unlocked: '#f44336',
-          transitioning: '#ff9800',
-          jammed: '#ff5722',
-          unknown: '#9e9e9e',
-        };
-        input.value = this._config[`color_${key}`] || defaults[key];
+    Object.entries(this._colorInputs || {}).forEach(([key, refs]) => {
+      if (!refs) return;
+      const storedValue = this._config[`color_${key}`] || refs.default;
+      if (refs.text) {
+        refs.text.value = storedValue;
+      }
+      const normalized = this._normalizeHexColor(storedValue) || this._normalizeHexColor(refs.default);
+      if (refs.picker && normalized) {
+        refs.picker.value = normalized;
       }
     });
   }
@@ -2137,19 +2204,35 @@ class SexyLockCardEditor extends HTMLElement {
     }
   }
 
-  _colorChanged(colorName, ev) {
+  _colorChanged(colorName, value) {
     if (!this._config) return;
-    
-    const value = ev.detail.value;
     const newConfig = { ...this._config };
     const configKey = `color_${colorName}`;
-    
     if (value) {
       newConfig[configKey] = value;
     } else {
       delete newConfig[configKey];
     }
     this._updateConfig(newConfig);
+  }
+
+  _normalizeHexColor(value) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(trimmed)) {
+      return trimmed.toLowerCase();
+    }
+    const shortMatch = trimmed.match(/^#([0-9a-fA-F]{3})$/);
+    if (shortMatch) {
+      const expanded = shortMatch[1]
+        .split('')
+        .map((char) => `${char}${char}`)
+        .join('');
+      return `#${expanded.toLowerCase()}`;
+    }
+    return null;
   }
 
   _tapLockedActionChanged(ev) {
