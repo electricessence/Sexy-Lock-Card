@@ -1,18 +1,19 @@
 # Sexy Lock Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A polished Lovelace card that treats your locks like first-class citizens—door sensor aware, per-state tap actions, battery indicator, responsive animations, and a full visual editor.
 
 ## Highlights
 
-- 🎯 **Per-state tap actions** – unique tap behavior for locked/unlocked states plus debounce and optional disable switches.
+- 🎯 **Per-state tap actions** – dedicated locked/unlocked tap actions plus hold support; set an action to `none` to disable it entirely.
 - 🚪 **Door sensor guard** – block taps and fade the icon whenever the paired contact sensor reports the door open.
 - 🔋 **Low battery pill** – optional entity + threshold draws a color-mapped vertical gauge in any corner when the level drops.
 - 🌀 **Smart animations** – snappy direct locked↔unlocked rotation, smooth staged slide/rotation choreography everywhere else.
 - 🧪 **Local harness** – `test.html` simulates locks, door sensors, and batteries without Home Assistant.
+- 📐 **Grid-friendly footprint** – defaults to a 2×2 cell size in dashboard grid layouts, just like button-card.
 
 ## Installation
 
@@ -48,7 +49,6 @@ battery_entity: sensor.front_door_lock_battery # optional
 | `battery_entity` + `battery_threshold` | Show the warning pill when the percentage hits the threshold (default 35%). |
 | `battery_indicator_position` | `top-right` (default), `top-left`, `bottom-right`, or `bottom-left`. |
 | `tap_action_locked` / `tap_action_unlocked` | Override tap behaviors per stable state; set action `none` to disable. |
-| `allow_locked_action` / `allow_unlocked_action` | Quick booleans to enable/disable taps without editing actions. |
 | `requested_timeout` | Milliseconds before a requested state snaps back if HA never confirms it (default 15s). |
 
 All other legacy options (custom colors, animation durations, slide offset, gradient speed, unlock direction, etc.) still work and are exposed in the visual editor. Full details live in [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) and the [`examples/`](examples) folder.

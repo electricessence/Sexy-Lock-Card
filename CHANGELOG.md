@@ -5,6 +5,16 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-11-17
+
+### Changed
+- 📐 Default sections/grid footprint now reports 2×2 cells so the card drops into dashboards with sane proportions out of the box.
+- 🌀 Direct locked↔unlocked rotation now snaps in half the time (25% of the configured rotation duration) for a snappier response when HA skips transitional states.
+- 🟢 Outer accent ring enlarged by 5% and card padding tuned so the SVG fills more of the tile without clipping.
+
+### Fixed
+- 📝 Name/state text sits closer to the icon by default (via negative top margin) without disturbing layouts that hide the labels entirely.
+
 ## [2.0.0] - 2025-11-17
 
 ### Added
@@ -215,4 +225,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.0.0
 [1.2.4]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.4
 [1.2.5]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.5
+[2.0.1]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v2.0.1
 [2.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v2.0.0

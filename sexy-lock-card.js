@@ -64,6 +64,30 @@ class SexyLockCard extends HTMLElement {
       throw new Error('You need to define an entity');
     }
     
+    const baseTapAction = config.tap_action || { action: 'toggle' };
+    let lockedTap = config.tap_action_locked || null;
+    let unlockedTap = config.tap_action_unlocked || null;
+
+    if (!lockedTap) {
+      lockedTap = baseTapAction;
+    }
+    if (!unlockedTap) {
+      unlockedTap = baseTapAction;
+    }
+
+    if (config.allow_locked_action === false && !config.tap_action_locked) {
+      lockedTap = { action: 'none' };
+    }
+    if (config.allow_unlocked_action === false && !config.tap_action_unlocked) {
+      unlockedTap = { action: 'none' };
+    }
+    if (lockedTap?.action === undefined) {
+      lockedTap = { action: 'toggle' };
+    }
+    if (unlockedTap?.action === undefined) {
+      unlockedTap = { action: 'toggle' };
+    }
+
     this._config = {
       entity: config.entity,
       name: config.name || null,
@@ -78,17 +102,14 @@ class SexyLockCard extends HTMLElement {
       color_transitioning: config.color_transitioning || null,
       color_jammed: config.color_jammed || null,
       color_unknown: config.color_unknown || null,
-      tap_action: config.tap_action || { action: 'toggle' },
       hold_action: config.hold_action || { action: 'more-info' },
       // Door/contact sensor integration (optional)
       door_entity: config.door_entity || null,
       battery_entity: config.battery_entity || null,
       battery_threshold: typeof config.battery_threshold === 'number' ? config.battery_threshold : 35,
       battery_indicator_position: config.battery_indicator_position || 'top-right',
-      tap_action_locked: config.tap_action_locked || null,
-      tap_action_unlocked: config.tap_action_unlocked || null,
-      allow_locked_action: config.allow_locked_action !== false,
-      allow_unlocked_action: config.allow_unlocked_action !== false,
+      tap_action_locked: lockedTap,
+      tap_action_unlocked: unlockedTap,
       requested_timeout: typeof config.requested_timeout === 'number' ? config.requested_timeout : 15000,
     };
     
@@ -350,7 +371,7 @@ class SexyLockCard extends HTMLElement {
       : this._directRotationTarget === 'locked' ? 'rotate-locked' : null;
     if (rotationClass && directRotationClass && rotationClass === directRotationClass) {
       const baseRotationDuration = this._config?.rotation_duration !== undefined ? this._config.rotation_duration : 3000;
-      const adjustedRotationDuration = Math.round(baseRotationDuration * 0.5);
+      const adjustedRotationDuration = Math.round(baseRotationDuration * 0.25);
       lockIcon.style.setProperty('--rotation-timing-function', 'cubic-bezier(0.85, 0.05, 0.85, 1)');
       lockIcon.style.setProperty('--rotation-duration', `${adjustedRotationDuration}ms`);
       this._directRotationTarget = null;
@@ -424,10 +445,10 @@ class SexyLockCard extends HTMLElement {
 
   _getTapActionForState(state) {
     if (state === 'locked') {
-      return this._config?.tap_action_locked || this._config?.tap_action || null;
+      return this._config?.tap_action_locked || null;
     }
     if (state === 'unlocked') {
-      return this._config?.tap_action_unlocked || this._config?.tap_action || null;
+      return this._config?.tap_action_unlocked || null;
     }
     return null;
   }
@@ -611,10 +632,10 @@ class SexyLockCard extends HTMLElement {
     const viewBoxSize = 100;
     const centerX = 50;
     const centerY = 50;
-    const radius = 28; // Lock pieces radius
+    const radius = 26; // Lock pieces radius
     const gap = 12; // Gap width in viewBox units
-    const ringRadius = 46; // Ring radius - much larger than lock pieces
-    const ringWidth = 5; // Ring thickness in viewBox units (slightly thicker)
+    const ringRadius = 45; // Ring radius - much larger than lock pieces (max size is 45)
+    const ringWidth = 8; // Ring thickness in viewBox units (slightly thicker)
     
     // Calculate chord endpoints for the gap
     const halfGap = gap / 2;
@@ -732,16 +753,8 @@ class SexyLockCard extends HTMLElement {
       return;
     }
 
-    const allowState = normalizedState === 'locked'
-      ? this._config.allow_locked_action !== false
-      : this._config.allow_unlocked_action !== false;
-    if (!allowState) {
-      this._showInteractionBlockedFeedback();
-      return;
-    }
-
     const actionConfig = this._getTapActionForState(normalizedState);
-    if (!actionConfig) {
+    if (!actionConfig || actionConfig.action === 'none') {
       this._showInteractionBlockedFeedback();
       return;
     }
@@ -1115,7 +1128,7 @@ class SexyLockCard extends HTMLElement {
           font-size: clamp(0.875rem, 4vw, 1.125rem);
           font-weight: 500;
           color: var(--primary-text-color);
-          margin: 0;
+          margin: -1em 0 0;
           text-align: center;
           flex: 0 0 auto;
           min-height: 0;
@@ -1262,6 +1275,18 @@ class SexyLockCard extends HTMLElement {
    */
   getCardSize() {
     return 3;
+  }
+
+  /**
+   * Define default sizing for the sections/grid dashboard layout
+   */
+  getGridOptions() {
+    return {
+      rows: 2,
+      columns: 2,
+      min_rows: 2,
+      min_columns: 2,
+    };
   }
 
   /**
@@ -1603,47 +1628,21 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="section-header expandable">Actions</div>
         <div class="section-content">
           <div class="option">
-            <label>Tap Action</label>
-            <div class="description">Action to perform when card is tapped</div>
-            <div class="tap-action-selector"></div>
-          </div>
-          
-          <div class="option">
-            <label>Hold Action</label>
-            <div class="description">Action to perform when card is held</div>
-            <div class="hold-action-selector"></div>
-          </div>
-
-          <div class="option">
             <label>Tap Action (Locked State)</label>
-            <div class="description">Overrides tap behavior when the lock is currently locked</div>
+            <div class="description">Action to perform when tapped while the lock reports locked</div>
             <div class="tap-locked-action-selector"></div>
           </div>
 
           <div class="option">
             <label>Tap Action (Unlocked State)</label>
-            <div class="description">Overrides tap behavior when the lock is currently unlocked</div>
+            <div class="description">Action to perform when tapped while the lock reports unlocked</div>
             <div class="tap-unlocked-action-selector"></div>
           </div>
 
           <div class="option">
-            <div class="switch-row">
-              <div class="label-wrapper">
-                <label>Enable Tap When Locked</label>
-                <div class="description">Allow taps to trigger actions while the lock reports locked</div>
-              </div>
-              <div class="allow-locked-switch"></div>
-            </div>
-          </div>
-
-          <div class="option">
-            <div class="switch-row">
-              <div class="label-wrapper">
-                <label>Enable Tap When Unlocked</label>
-                <div class="description">Allow taps to trigger actions while the lock reports unlocked</div>
-              </div>
-              <div class="allow-unlocked-switch"></div>
-            </div>
+            <label>Hold Action</label>
+            <div class="description">Action to perform when the card is held</div>
+            <div class="hold-action-selector"></div>
           </div>
 
           <div class="option">
@@ -1847,21 +1846,10 @@ class SexyLockCardEditor extends HTMLElement {
       }
     });
 
-    // Tap action selector
-    const tapActionSelector = document.createElement('ha-selector');
-    tapActionSelector.hass = this._hass;
-    tapActionSelector.selector = { ui_action: { } };
-    tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
-    tapActionSelector.addEventListener('value-changed', this._tapActionChanged.bind(this));
-    this._tapActionSelector = tapActionSelector;
-    
-    const tapActionContainer = this.shadowRoot.querySelector('.tap-action-selector');
-    tapActionContainer.appendChild(tapActionSelector);
-
     const tapLockedSelector = document.createElement('ha-selector');
     tapLockedSelector.hass = this._hass;
     tapLockedSelector.selector = { ui_action: { } };
-    tapLockedSelector.value = this._config.tap_action_locked || this._config.tap_action || { action: 'toggle' };
+    tapLockedSelector.value = this._getEffectiveTapAction('locked');
     tapLockedSelector.addEventListener('value-changed', this._tapLockedActionChanged.bind(this));
     this._tapLockedActionSelector = tapLockedSelector;
     const tapLockedContainer = this.shadowRoot.querySelector('.tap-locked-action-selector');
@@ -1870,25 +1858,11 @@ class SexyLockCardEditor extends HTMLElement {
     const tapUnlockedSelector = document.createElement('ha-selector');
     tapUnlockedSelector.hass = this._hass;
     tapUnlockedSelector.selector = { ui_action: { } };
-    tapUnlockedSelector.value = this._config.tap_action_unlocked || this._config.tap_action || { action: 'toggle' };
+    tapUnlockedSelector.value = this._getEffectiveTapAction('unlocked');
     tapUnlockedSelector.addEventListener('value-changed', this._tapUnlockedActionChanged.bind(this));
     this._tapUnlockedActionSelector = tapUnlockedSelector;
     const tapUnlockedContainer = this.shadowRoot.querySelector('.tap-unlocked-action-selector');
     tapUnlockedContainer.appendChild(tapUnlockedSelector);
-
-    const allowLockedSwitch = document.createElement('ha-switch');
-    allowLockedSwitch.checked = this._config.allow_locked_action !== false;
-    allowLockedSwitch.addEventListener('change', this._allowLockedActionChanged.bind(this));
-    this._allowLockedSwitch = allowLockedSwitch;
-    const allowLockedContainer = this.shadowRoot.querySelector('.allow-locked-switch');
-    allowLockedContainer.appendChild(allowLockedSwitch);
-
-    const allowUnlockedSwitch = document.createElement('ha-switch');
-    allowUnlockedSwitch.checked = this._config.allow_unlocked_action !== false;
-    allowUnlockedSwitch.addEventListener('change', this._allowUnlockedActionChanged.bind(this));
-    this._allowUnlockedSwitch = allowUnlockedSwitch;
-    const allowUnlockedContainer = this.shadowRoot.querySelector('.allow-unlocked-switch');
-    allowUnlockedContainer.appendChild(allowUnlockedSwitch);
 
     const requestedTimeoutInput = document.createElement('ha-selector');
     requestedTimeoutInput.hass = this._hass;
@@ -2059,23 +2033,14 @@ class SexyLockCardEditor extends HTMLElement {
     if (this._gradientSpeedInput) {
       this._gradientSpeedInput.value = this._config.gradient_speed !== undefined ? this._config.gradient_speed : 2;
     }
-    if (this._tapActionSelector) {
-      this._tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
-    }
     if (this._tapLockedActionSelector) {
-      this._tapLockedActionSelector.value = this._config.tap_action_locked || this._config.tap_action || { action: 'toggle' };
+      this._tapLockedActionSelector.value = this._getEffectiveTapAction('locked');
     }
     if (this._tapUnlockedActionSelector) {
-      this._tapUnlockedActionSelector.value = this._config.tap_action_unlocked || this._config.tap_action || { action: 'toggle' };
+      this._tapUnlockedActionSelector.value = this._getEffectiveTapAction('unlocked');
     }
     if (this._holdActionSelector) {
       this._holdActionSelector.value = this._config.hold_action || { action: 'more-info' };
-    }
-    if (this._allowLockedSwitch) {
-      this._allowLockedSwitch.checked = this._config.allow_locked_action !== false;
-    }
-    if (this._allowUnlockedSwitch) {
-      this._allowUnlockedSwitch.checked = this._config.allow_unlocked_action !== false;
     }
     if (this._requestedTimeoutInput) {
       this._requestedTimeoutInput.value = this._config.requested_timeout !== undefined ? this._config.requested_timeout : 4000;
@@ -2092,6 +2057,21 @@ class SexyLockCardEditor extends HTMLElement {
         input.value = this._config[`color_${key}`] || defaults[key];
       }
     });
+  }
+
+  _getEffectiveTapAction(state) {
+    const config = this._config || {};
+    const baseAction = config.tap_action || { action: 'toggle' };
+    const key = state === 'locked' ? 'tap_action_locked' : 'tap_action_unlocked';
+    let action = config[key] || baseAction;
+    const allowKey = state === 'locked' ? 'allow_locked_action' : 'allow_unlocked_action';
+    if (config[allowKey] === false && !config[key]) {
+      action = { action: 'none' };
+    }
+    if (!action || typeof action !== 'object' || action.action === undefined) {
+      action = { action: 'toggle' };
+    }
+    return action;
   }
 
   _entityChanged(ev) {
@@ -2153,13 +2133,6 @@ class SexyLockCardEditor extends HTMLElement {
     this._updateConfig(newConfig);
   }
 
-  _tapActionChanged(ev) {
-    if (!this._config) return;
-    
-    const newConfig = { ...this._config, tap_action: ev.detail.value };
-    this._updateConfig(newConfig);
-  }
-
   _tapLockedActionChanged(ev) {
     if (!this._config) return;
     const newConfig = { ...this._config, tap_action_locked: ev.detail.value };
@@ -2176,18 +2149,6 @@ class SexyLockCardEditor extends HTMLElement {
     if (!this._config) return;
     
     const newConfig = { ...this._config, hold_action: ev.detail.value };
-    this._updateConfig(newConfig);
-  }
-
-  _allowLockedActionChanged(ev) {
-    if (!this._config) return;
-    const newConfig = { ...this._config, allow_locked_action: ev.target.checked };
-    this._updateConfig(newConfig);
-  }
-
-  _allowUnlockedActionChanged(ev) {
-    if (!this._config) return;
-    const newConfig = { ...this._config, allow_unlocked_action: ev.target.checked };
     this._updateConfig(newConfig);
   }
 
@@ -2306,7 +2267,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 2.0.0 ',
+  '%c SEXY-LOCK-CARD %c 2.0.1 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );

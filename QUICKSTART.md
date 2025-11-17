@@ -38,6 +38,7 @@ If you are not using HACS:
 ## Next Steps
 
 - Review [README.md](README.md) for every option (per-state tap actions, door sensor guard, low-battery indicator, etc.).
+- Configure per-state tap actions directly—only locked/unlocked taps plus hold exist, so set an action to `none` if you want to disable it.
 - Use the local [test.html](test.html) harness to preview animations without Home Assistant.
 - Skim [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) if you are curious about the visual transitions.
 

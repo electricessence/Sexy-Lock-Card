@@ -1,7 +1,7 @@
 # Sexy Lock Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A highly polished, animated custom Lovelace card for Home Assistant that displays smart lock states with smooth visual transitions.
@@ -16,6 +16,7 @@ A highly polished, animated custom Lovelace card for Home Assistant that display
 - **⚡ Lightweight** - Pure JavaScript Web Component, no external dependencies
 - **🎯 Production Ready** - Fully compatible with Home Assistant, works with any lock entity
 - **📱 Mobile Friendly** - Touch-optimized with long-press support
+- **📐 Grid Friendly** - Ships with a 2×2 default footprint in the new dashboard grid/sections layout
 
 ### Visual States
 
@@ -83,7 +84,9 @@ name: Front Door Lock
 show_name: true
 show_state: true
 animation_duration: 400
-tap_action:
+tap_action_locked:
+  action: toggle
+tap_action_unlocked:
   action: toggle
 hold_action:
   action: more-info
@@ -98,22 +101,26 @@ hold_action:
 | `show_name` | boolean | `true` | Show/hide lock name |
 | `show_state` | boolean | `true` | Show/hide state text |
 | `animation_duration` | number | `400` | Animation duration in milliseconds (300-600 recommended) |
-| `tap_action` | object | `{action: 'toggle'}` | Action on tap |
+| `tap_action_locked` | object | `{action: 'toggle'}` | Tap action when the lock reports `locked` |
+| `tap_action_unlocked` | object | `{action: 'toggle'}` | Tap action when the lock reports `unlocked` |
 | `hold_action` | object | `{action: 'more-info'}` | Action on long press |
 
 ### Actions
 
 ```yaml
-tap_action:
+tap_action_locked:
   action: toggle  # toggle | more-info | call-service | none
 
-# OR
-
-tap_action:
+tap_action_unlocked:
   action: call-service
-  service: lock.unlock
+  service: lock.lock
   service_data:
     entity_id: lock.front_door
+
+# Disable a tap state entirely
+
+tap_action_locked:
+  action: none
 ```
 
 ## 📚 Examples
@@ -154,11 +161,16 @@ animation_duration: 300  # Faster animations
 ```yaml
 type: custom:sexy-lock-card
 entity: lock.front_door
-tap_action:
+tap_action_locked:
   action: call-service
   service: script.unlock_and_notify
   service_data:
     lock_entity: lock.front_door
+tap_action_unlocked:
+  action: call-service
+  service: lock.lock
+  service_data:
+    entity_id: lock.front_door
 hold_action:
   action: more-info
 ```
