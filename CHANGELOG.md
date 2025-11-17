@@ -5,6 +5,22 @@ All notable changes to Sexy Lock Card will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-11-17
+
+### Added
+- 🚪 **Door sensor awareness**: optional binary sensor gating prevents taps when the door is open and dims the lock UI for instant feedback.
+- 👆 **Per-state tap actions** with debounce, allowing different behaviors when locked vs unlocked and the ability to disable either state entirely.
+- 🔋 **Battery indicator**: configurable entity, threshold (default 35%), and corner placement; vertical, color-mapped gauge appears only when the level is low, plus new test harness controls to simulate battery drain.
+
+### Changed
+- 🔄 Direct locked↔unlocked transitions now snap rotation with halved duration and tuned easing but leave slide animations untouched for natural motion.
+- 🌀 Requested-state handling snaps back reliably thanks to tighter timers and smarter state syncing during HA updates.
+- 🧰 `test.html` gained live controls for the new door sensor, lock direction, and battery slider so you can demo all behaviors without HA.
+
+### Fixed
+- 🚫 Tap gestures are ignored while transitional states run or when door/battery guardrails block them, preventing accidental service calls.
+- 🎯 Visual state stays in sync with entity reports even when HA skips intermediate states, avoiding stuck animations.
+
 ## [1.2.5] - 2025-11-15
 
 ### Added
@@ -199,3 +215,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.0.0
 [1.2.4]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.4
 [1.2.5]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v1.2.5
+[2.0.0]: https://github.com/electricessence/Sexy-Lock-Card/releases/tag/v2.0.0

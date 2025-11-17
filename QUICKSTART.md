@@ -1,71 +1,48 @@
 # Quick Start Guide
 
-Get your animated lock card up and running in 5 minutes!
+Sexy Lock Card v2 is a full HACS package now—installation is usually a two-minute job.
 
-## Step 1: Download the Card
+## 1. Install via HACS (Recommended)
 
-Download `sexy-lock-card.js` from this repository.
+1. In Home Assistant open **HACS → Frontend**.
+2. Select **Explore & Download Repositories** and search for "Sexy Lock Card" (or add this repo as a custom source once, if it is not public yet).
+3. Click **Download** and restart Home Assistant when prompted.
 
-## Step 2: Install in Home Assistant
+That’s it—the resource is registered automatically.
 
-1. Copy `sexy-lock-card.js` to your Home Assistant config folder:
-   ```
-   /config/www/sexy-lock-card.js
-   ```
+## 2. Add the Card to a Dashboard
 
-2. In Home Assistant, go to:
-   **Settings** → **Dashboards** → **Resources** (⋮ menu, top-right)
+1. Edit any dashboard.
+2. Click **Add Card → Sexy Lock Card** (found under **Custom**).
+3. Pick your lock entity and optional door sensor/battery entities.
+4. Save and you are done.
 
-3. Click **Add Resource**:
-   - URL: `/local/sexy-lock-card.js`
-   - Resource type: **JavaScript Module**
-
-4. Click **Create**
-
-## Step 3: Add the Card
-
-1. Edit your dashboard
-2. Click **Add Card**
-3. Search for "Sexy Lock Card"
-4. Select your lock entity
-5. Done!
-
-Or add manually in YAML mode:
+Prefer YAML? Drop this into any Lovelace view:
 
 ```yaml
 type: custom:sexy-lock-card
 entity: lock.front_door
+door_entity: binary_sensor.front_door_contact
+battery_entity: sensor.front_door_lock_battery
 ```
 
-## Step 4: Refresh
+## 3. Manual Install (Fallback)
 
-Press `Ctrl + Shift + R` (or `Cmd + Shift + R` on Mac) to clear cache.
+If you are not using HACS:
 
-## That's It! 🎉
-
-Your lock should now have smooth animations when locking/unlocking.
-
----
+1. Download `sexy-lock-card.js` from the latest release.
+2. Copy it to `/config/www/sexy-lock-card.js`.
+3. Add a Lovelace resource: **Settings → Dashboards → Resources → Add Resource** with URL `/local/sexy-lock-card.js` and type **JavaScript Module**.
+4. Clear cache (`Ctrl+Shift+R` or `Cmd+Shift+R`).
 
 ## Next Steps
 
-- See [README.md](README.md) for full configuration options
-- Check [examples/](examples/) for advanced configurations
-- Read [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) to understand the animation logic
-
----
+- Review [README.md](README.md) for every option (per-state tap actions, door sensor guard, low-battery indicator, etc.).
+- Use the local [test.html](test.html) harness to preview animations without Home Assistant.
+- Skim [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) if you are curious about the visual transitions.
 
 ## Troubleshooting
 
-**Card not showing?**
-- Check the file is in `/config/www/`
-- Verify resource is added in Dashboard Resources
-- Clear browser cache (Ctrl+Shift+R)
-
-**No animations?**
-- Entity must be a `lock.*` domain
-- Try changing `animation_duration: 300`
-
-**Need help?**
-- Check the browser console (F12) for errors
-- Make sure the entity ID exists (Developer Tools → States)
+- **Card missing?** Confirm the resource is loaded (HACS handles this automatically) and clear cache.
+- **No animations?** Make sure the entity is in the `lock.` domain and the dashboard is not in edit mode.
+- **Door/battery sensors ignored?** Double-check the entity IDs and that the door sensor reports `on/off` or `open/closed` states.
