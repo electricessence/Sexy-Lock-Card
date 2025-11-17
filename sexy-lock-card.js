@@ -672,12 +672,14 @@ class SexyLockCard extends HTMLElement {
             fill-rule="evenodd"
             opacity="0.6"/>
       <g class="lock-ring-gradient-group">
-        <path class="lock-ring-gradient" 
-              d="${ringPath}"
-              fill="url(#ring-gradient-requested)"
-              fill-rule="evenodd"
-              style="mix-blend-mode: screen;"
-              opacity="0"/>
+        <circle class="lock-ring-gradient"
+                cx="${centerX}"
+                cy="${centerY}"
+                r="${ringRadius}"
+                fill="none"
+                stroke="url(#ring-gradient-requested)"
+                stroke-width="${ringWidth}"
+                opacity="0"/>
       </g>
     `;
     
@@ -708,11 +710,11 @@ class SexyLockCard extends HTMLElement {
       <svg viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="ring-gradient-requested">
-            <stop offset="0%" style="stop-color: rgba(255, 255, 255, 0.2); stop-opacity: 1" />
-            <stop offset="25%" style="stop-color: rgba(255, 255, 255, 0.5); stop-opacity: 1" />
-            <stop offset="50%" style="stop-color: rgba(255, 255, 255, 0.7); stop-opacity: 1" />
-            <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.5); stop-opacity: 1" />
-            <stop offset="100%" style="stop-color: rgba(255, 255, 255, 0.2); stop-opacity: 1" />
+            <stop offset="0%" style="stop-color: rgba(255, 255, 255, 0.1); stop-opacity: 1" />
+            <stop offset="25%" style="stop-color: rgba(255, 255, 255, 0.35); stop-opacity: 1" />
+            <stop offset="50%" style="stop-color: rgba(255, 255, 255, 0.45); stop-opacity: 1" />
+            <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.35); stop-opacity: 1" />
+            <stop offset="100%" style="stop-color: rgba(255, 255, 255, 0.1); stop-opacity: 1" />
           </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -1095,6 +1097,10 @@ class SexyLockCard extends HTMLElement {
         
         .lock-ring-gradient {
           transition: opacity 0.3s ease;
+          mix-blend-mode: screen;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          pointer-events: none;
         }
         
         .lock-ring-gradient-group {
