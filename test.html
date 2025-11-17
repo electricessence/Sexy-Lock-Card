@@ -338,6 +338,11 @@ Animation Phase: idle</pre>
       console.log(`Setting visual state to: ${state}`);
       // Directly set the visual state for testing animations
       card._currentVisualState = state;
+      if (state === 'lock-requested' || state === 'unlock-requested') {
+        card._startRequestedTimeout(state);
+      } else {
+        card._clearRequestedTimeout();
+      }
       card._updateVisuals();
       updateStateInfo();
     };
