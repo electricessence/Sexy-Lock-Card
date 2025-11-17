@@ -1,7 +1,7 @@
 # Sexy Lock Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-![Version](https://img.shields.io/badge/version-1.1.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A highly polished, animated custom Lovelace card for Home Assistant that displays smart lock states with smooth visual transitions.

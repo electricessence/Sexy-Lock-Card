@@ -123,6 +123,23 @@
       background: #388bfd;
     }
     
+    .battery-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .battery-control input[type="range"] {
+      flex: 1;
+    }
+
+    .battery-control span {
+      min-width: 48px;
+      text-align: right;
+      font-weight: 600;
+    }
+
     .state-display {
       font-family: 'Courier New', monospace;
       background: #0d1117;
@@ -194,6 +211,18 @@ Animation Phase: idle</pre>
         <button onclick="setVisualState('unlock-requested')" style="background: #ff9800;">unlock-requested</button>
       </div>
 
+      <h3>Door Sensor</h3>
+      <div class="button-group">
+        <button onclick="setDoorState('closed')" style="background: #4caf50;">Door Closed</button>
+        <button onclick="setDoorState('open')" class="secondary" style="background: #d29922;">Door Open</button>
+      </div>
+
+      <h3>Battery Level</h3>
+      <div class="battery-control">
+        <input type="range" id="batterySlider" min="0" max="100" value="80" oninput="setBatteryLevel(this.value)">
+        <span id="batteryValue">80%</span>
+      </div>
+
       <h3>Unlock Direction</h3>
       <div class="button-group">
         <button onclick="setDirection('counterclockwise')">Counterclockwise (Default)</button>
@@ -211,8 +240,9 @@ Animation Phase: idle</pre>
         <strong>How to test:</strong><br>
         1. Click "Tap Card" to simulate user clicking the lock<br>
         2. Use entity state buttons to simulate what the lock reports<br>
-        3. Watch the visual states and animations<br>
-        4. Try test scenarios for common flows
+        3. Toggle the door sensor to see how taps are gated<br>
+        4. Watch the visual states and animations<br>
+        5. Try test scenarios for common flows
       </div>
     </div>
   </div>
@@ -230,6 +260,22 @@ Animation Phase: idle</pre>
           attributes: {
             friendly_name: 'Test Lock'
           }
+        },
+        'binary_sensor.test_door': {
+          entity_id: 'binary_sensor.test_door',
+          state: 'off',
+          attributes: {
+            friendly_name: 'Front Door'
+          }
+        },
+        'sensor.test_lock_battery': {
+          entity_id: 'sensor.test_lock_battery',
+          state: '80',
+          attributes: {
+            unit_of_measurement: '%',
+            device_class: 'battery',
+            friendly_name: 'Lock Battery'
+          }
         }
       },
       callService: function(domain, service, data) {
@@ -246,7 +292,11 @@ Animation Phase: idle</pre>
       show_name: true,
       show_state: true,
       animation_duration: 400,
-      unlock_direction: 'counterclockwise'
+      unlock_direction: 'counterclockwise',
+      door_entity: 'binary_sensor.test_door',
+      battery_entity: 'sensor.test_lock_battery',
+      battery_threshold: 35,
+      battery_indicator_position: 'top-right'
     };
 
     function applyConfig() {
@@ -289,6 +339,29 @@ Animation Phase: idle</pre>
       // Directly set the visual state for testing animations
       card._currentVisualState = state;
       card._updateVisuals();
+      updateStateInfo();
+    };
+
+    window.setDoorState = function(state) {
+      const normalized = state === 'closed' ? 'off' : state === 'open' ? 'on' : state;
+      console.log(`Setting door sensor state to: ${normalized}`);
+      window.mockHass.states['binary_sensor.test_door'].state = normalized;
+      card.hass = { ...window.mockHass };
+      updateStateInfo();
+    };
+
+    window.setBatteryLevel = function(level) {
+      const value = Math.max(0, Math.min(100, Math.round(Number(level) || 0)));
+      console.log(`Setting battery level to: ${value}%`);
+      const batteryEntity = window.mockHass.states['sensor.test_lock_battery'];
+      if (batteryEntity) {
+        batteryEntity.state = value.toString();
+      }
+      const slider = document.getElementById('batterySlider');
+      const label = document.getElementById('batteryValue');
+      if (slider) slider.value = value;
+      if (label) label.textContent = `${value}%`;
+      card.hass = { ...window.mockHass };
       updateStateInfo();
     };
 
@@ -375,12 +448,18 @@ Animation Phase: idle</pre>
       const visualState = card._currentVisualState || 'unknown';
       const animationPhase = card._animationPhase || 'unknown';
       const userAction = card._userInitiated ? 'user initiated' : 'external';
+      const doorState = window.mockHass.states['binary_sensor.test_door'].state;
+      const doorDisplay = doorState === 'off' ? 'closed' : doorState === 'on' ? 'open' : doorState;
+      const battery = window.mockHass.states['sensor.test_lock_battery']?.state ?? 'unknown';
+      const batteryDisplay = battery === 'unknown' ? 'unknown' : `${battery}%`;
       
       stateInfo.textContent = `Entity State: ${entity.state}
 Visual State: ${visualState}
 Animation Phase: ${animationPhase}
 User Action: ${userAction}
     Unlock Direction: ${cardConfig.unlock_direction}
+    Door Sensor: ${doorDisplay}
+    Battery: ${batteryDisplay}
 Last Updated: ${new Date().toLocaleTimeString()}`;
     }
     

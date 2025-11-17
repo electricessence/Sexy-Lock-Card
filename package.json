@@ -1,7 +1,7 @@
 {
   "name": "sexy-lock-card",
-  "version": "1.2.6",
-  "description": "Animated lock card for Home Assistant with smooth state transitions",
+  "version": "2.0.0",
+  "description": "HACS-ready animated lock card for Home Assistant with door sensor gating, per-state tap actions, and low-battery indicator",
   "main": "sexy-lock-card.js",
   "scripts": {
     "test": "node test/run-tests.js",
@@ -15,6 +15,9 @@
     "custom-card",
     "lock",
     "animation",
+    "door-sensor",
+    "battery",
+    "tap-actions",
     "smart-home"
   ],
   "author": "Sexy Lock Card Contributors",

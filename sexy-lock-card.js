@@ -20,6 +20,13 @@ class SexyLockCard extends HTMLElement {
     this._lastEntityState = null;
     this._userInitiated = false; // Track if state change was user-initiated
     this._pendingUserAction = null; // 'lock' or 'unlock'
+    this._doorInfo = null; // Cache of latest door/contact status
+    this._interactionFeedbackTimer = null;
+    this._requestedTimeoutTimer = null;
+    this._requestedFallbackState = null;
+    this._lastStableActionState = null;
+    this._lastTapTimestamp = 0;
+    this._directRotationTarget = null;
   }
   
   /**
@@ -75,9 +82,14 @@ class SexyLockCard extends HTMLElement {
       hold_action: config.hold_action || { action: 'more-info' },
       // Door/contact sensor integration (optional)
       door_entity: config.door_entity || null,
-      door_name: config.door_name || null,
-      door_show_status: config.door_show_status !== false,
-      door_alert_mode: config.door_alert_mode || 'none', // none | warn | block
+      battery_entity: config.battery_entity || null,
+      battery_threshold: typeof config.battery_threshold === 'number' ? config.battery_threshold : 35,
+      battery_indicator_position: config.battery_indicator_position || 'top-right',
+      tap_action_locked: config.tap_action_locked || null,
+      tap_action_unlocked: config.tap_action_unlocked || null,
+      allow_locked_action: config.allow_locked_action !== false,
+      allow_unlocked_action: config.allow_unlocked_action !== false,
+      requested_timeout: typeof config.requested_timeout === 'number' ? config.requested_timeout : 15000,
     };
     
     this._render();
@@ -183,7 +195,10 @@ class SexyLockCard extends HTMLElement {
       clearTimeout(this._animationTimer);
       this._animationTimer = null;
     }
+    this._clearRequestedTimeout();
     
+    const hadPendingAction = !!this._pendingUserAction;
+
     // If there's a pending user action and entity confirms it, clear the flag
     if (this._pendingUserAction) {
       if ((this._pendingUserAction === 'lock' && (to === 'locking' || to === 'locked')) ||
@@ -198,6 +213,12 @@ class SexyLockCard extends HTMLElement {
       this._currentVisualState = to;
       this._animationPhase = 'idle';
       this._updateVisuals();
+    }
+
+    if (!hadPendingAction && ((from === 'locked' && to === 'unlocked') || (from === 'unlocked' && to === 'locked'))) {
+      this._directRotationTarget = to;
+    } else if (from !== to) {
+      this._directRotationTarget = null;
     }
   }
 
@@ -214,12 +235,15 @@ class SexyLockCard extends HTMLElement {
       nameEl.textContent = this._config.name || entity.attributes.friendly_name || 'Lock';
     }
     
+    this._doorInfo = this._computeDoorInfo();
+    const displayState = this._isDoorClosed() ? entity.state : 'door-open';
     if (stateEl) {
-      stateEl.textContent = this._getStateLabel(entity.state);
+      stateEl.textContent = this._getStateLabel(displayState);
     }
-    
+
     this._syncVisualStateWithEntity(entity);
     this._updateVisuals();
+    this._updateBatteryIndicator();
   }
 
   /**
@@ -240,8 +264,15 @@ class SexyLockCard extends HTMLElement {
         clearTimeout(this._animationTimer);
         this._animationTimer = null;
       }
-      this._currentVisualState = normalized;
+      this._clearRequestedTimeout();
+      this._requestedFallbackState = null;
+      this._pendingUserAction = null;
       this._animationPhase = 'idle';
+      this._currentVisualState = normalized;
+    }
+
+    if (normalized === 'locked' || normalized === 'unlocked') {
+      this._lastStableActionState = normalized;
     }
   }
 
@@ -253,8 +284,14 @@ class SexyLockCard extends HTMLElement {
     
     const iconContainer = this.shadowRoot.querySelector('.lock-icon-container');
     const lockIcon = this.shadowRoot.querySelector('.lock-icon');
+    const card = this.shadowRoot.querySelector('.lock-card');
+    const doorOpen = !!(this._doorInfo && this._doorInfo.isClosed === false);
     
     if (!iconContainer || !lockIcon) return;
+    if (card) {
+      card.classList.toggle('door-open', doorOpen);
+    }
+    iconContainer.classList.toggle('door-open', doorOpen);
     
     // Remove all state classes
     iconContainer.classList.remove(
@@ -288,20 +325,38 @@ class SexyLockCard extends HTMLElement {
     
     // Apply rotation class
     lockIcon.classList.remove('rotate-locked', 'rotate-unlocked', 'rotate-45');
+    let rotationClass = null;
     if (isLockedRotation) {
-      lockIcon.classList.add('rotate-locked');
+      rotationClass = 'rotate-locked';
     } else if (isUnlockedRotation) {
-      lockIcon.classList.add('rotate-unlocked');
+      rotationClass = 'rotate-unlocked';
     }
     // lock-requested keeps unlocked rotation, unlock-requested keeps locked rotation
     else if (this._currentVisualState === 'lock-requested') {
-      lockIcon.classList.add('rotate-unlocked'); // Stay at 90° until locking/locked
+      rotationClass = 'rotate-unlocked'; // Stay at 90° until locking/locked
     } else if (this._currentVisualState === 'unlock-requested') {
-      lockIcon.classList.add('rotate-locked'); // Stay at 0° until unlocking/unlocked
+      rotationClass = 'rotate-locked'; // Stay at 0° until unlocking/unlocked
     }
     // Unknown and jammed get 45° rotation
     else if (['unknown', 'jammed', 'unavailable'].includes(this._currentVisualState)) {
-      lockIcon.classList.add('rotate-45');
+      rotationClass = 'rotate-45';
+    }
+
+    if (rotationClass) {
+      lockIcon.classList.add(rotationClass);
+    }
+
+    const directRotationClass = this._directRotationTarget === 'unlocked' ? 'rotate-unlocked'
+      : this._directRotationTarget === 'locked' ? 'rotate-locked' : null;
+    if (rotationClass && directRotationClass && rotationClass === directRotationClass) {
+      const baseRotationDuration = this._config?.rotation_duration !== undefined ? this._config.rotation_duration : 3000;
+      const adjustedRotationDuration = Math.round(baseRotationDuration * 0.5);
+      lockIcon.style.setProperty('--rotation-timing-function', 'cubic-bezier(0.85, 0.05, 0.85, 1)');
+      lockIcon.style.setProperty('--rotation-duration', `${adjustedRotationDuration}ms`);
+      this._directRotationTarget = null;
+    } else {
+      lockIcon.style.removeProperty('--rotation-timing-function');
+      lockIcon.style.removeProperty('--rotation-duration');
     }
     
     // Apply slide class (completely independent, based on actual entity state)
@@ -309,6 +364,20 @@ class SexyLockCard extends HTMLElement {
     if (slideClass) {
       lockIcon.classList.remove('slide-locked', 'slide-unlocked');
       lockIcon.classList.add(slideClass);
+
+      const baseSlideDuration = this._config?.slide_duration !== undefined ? this._config.slide_duration : 1000;
+      let slideTiming = slideClass === 'slide-unlocked'
+        ? 'cubic-bezier(0.6, 0, 1, 1)'
+        : 'cubic-bezier(0.1, 0, 0.25, 1)';
+      let adjustedDuration = slideClass === 'slide-unlocked'
+        ? Math.round(baseSlideDuration * 0.8)
+        : baseSlideDuration;
+
+      lockIcon.style.setProperty('--slide-timing-function', slideTiming);
+      lockIcon.style.setProperty('--slide-duration', `${adjustedDuration}ms`);
+    } else {
+      lockIcon.style.removeProperty('--slide-timing-function');
+      lockIcon.style.removeProperty('--slide-duration');
     }
     // Otherwise, keep whatever slide position we had before
     
@@ -344,12 +413,192 @@ class SexyLockCard extends HTMLElement {
       'locking': 'Locking...',
       'unlock-requested': 'Unlocking...',
       'unlocking': 'Unlocking...',
+      'door-open': 'Open',
       'jammed': 'Jammed',
       'unknown': 'Unknown',
       'unavailable': 'Unavailable',
     };
     
     return labels[state.toLowerCase()] || state;
+  }
+
+  _getTapActionForState(state) {
+    if (state === 'locked') {
+      return this._config?.tap_action_locked || this._config?.tap_action || null;
+    }
+    if (state === 'unlocked') {
+      return this._config?.tap_action_unlocked || this._config?.tap_action || null;
+    }
+    return null;
+  }
+
+  _executeTapAction(actionConfig, entity, state) {
+    if (!actionConfig || actionConfig.action === 'none') {
+      return;
+    }
+
+    switch (actionConfig.action) {
+      case 'toggle':
+        this._toggleLock(entity, state);
+        break;
+      case 'more-info':
+        this._showMoreInfo();
+        break;
+      case 'call-service':
+        this._callService(actionConfig);
+        break;
+      default:
+        break;
+    }
+  }
+
+  _getDoorEntity() {
+    if (!this._config?.door_entity || !this._hass) {
+      return null;
+    }
+    return this._hass.states[this._config.door_entity] || null;
+  }
+
+  _computeDoorInfo() {
+    const entity = this._getDoorEntity();
+    if (!entity) {
+      return null;
+    }
+
+    const rawState = (entity.state || '').toString().toLowerCase();
+    const closedStates = new Set(['off', 'closed', 'inactive', 'clear', 'standby', 'false', '0']);
+    const openStates = new Set(['on', 'open', 'active', 'detected', 'true', '1']);
+
+    let isClosed = false;
+    if (closedStates.has(rawState)) {
+      isClosed = true;
+    } else if (openStates.has(rawState)) {
+      isClosed = false;
+    } else {
+      // Default to "not safe" so we do not allow locking when sensor is unknown
+      isClosed = false;
+    }
+
+    return {
+      entity,
+      rawState,
+      isClosed,
+    };
+  }
+
+  _isDoorClosed() {
+    if (!this._doorInfo) {
+      return true; // No door sensor configured
+    }
+    return this._doorInfo.isClosed;
+  }
+
+  _getBatteryEntity() {
+    if (!this._config?.battery_entity || !this._hass) {
+      return null;
+    }
+    return this._hass.states[this._config.battery_entity] || null;
+  }
+
+  _extractBatteryLevel(entity) {
+    if (!entity) return null;
+    const candidates = [
+      entity.state,
+      entity.attributes?.battery_level,
+      entity.attributes?.battery,
+      entity.attributes?.level,
+      entity.attributes?.percentage,
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate === undefined || candidate === null || candidate === '') continue;
+      const parsed = parseFloat(candidate);
+      if (!Number.isNaN(parsed)) {
+        return Math.max(0, Math.min(100, parsed));
+      }
+    }
+    return null;
+  }
+
+  _getBatteryColor(level) {
+    const clamped = Math.max(0, Math.min(100, level || 0));
+    const hue = (clamped / 100) * 120; // 0 => red, 120 => green
+    return `hsl(${Math.round(hue)}, 80%, 50%)`;
+  }
+
+  _updateBatteryIndicator() {
+    const indicator = this.shadowRoot?.querySelector('.battery-indicator');
+    if (!indicator) return;
+
+    const position = this._config?.battery_indicator_position || 'top-right';
+    indicator.dataset.position = position;
+
+    const batteryEntity = this._getBatteryEntity();
+    const level = this._extractBatteryLevel(batteryEntity);
+    const threshold = typeof this._config?.battery_threshold === 'number' ? this._config.battery_threshold : 35;
+
+    if (!batteryEntity || level === null || level > threshold) {
+      indicator.setAttribute('hidden', '');
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(100, level));
+    const color = this._getBatteryColor(clamped);
+    const fill = indicator.querySelector('.battery-fill');
+    const cap = indicator.querySelector('.battery-cap');
+    const text = indicator.querySelector('.battery-text');
+
+    if (fill) {
+      fill.style.height = `${clamped}%`;
+      fill.style.background = color;
+    }
+    if (cap) {
+      cap.style.background = color;
+    }
+    if (text) {
+      text.textContent = `${Math.round(clamped)}%`;
+      text.style.color = color;
+    }
+
+    indicator.style.setProperty('--battery-indicator-color', color);
+    indicator.removeAttribute('hidden');
+  }
+
+  _showInteractionBlockedFeedback() {
+    const card = this.shadowRoot?.querySelector('.lock-card');
+    if (!card) return;
+    card.classList.add('interaction-blocked');
+    if (this._interactionFeedbackTimer) {
+      clearTimeout(this._interactionFeedbackTimer);
+    }
+    this._interactionFeedbackTimer = setTimeout(() => {
+      card.classList.remove('interaction-blocked');
+      this._interactionFeedbackTimer = null;
+    }, 600);
+  }
+
+  _startRequestedTimeout(requestedState) {
+    this._clearRequestedTimeout();
+    const timeout = Math.max(500, this._config?.requested_timeout || 4000);
+    if (requestedState === 'lock-requested' || requestedState === 'unlock-requested') {
+      this._requestedFallbackState = this._lastStableActionState || (requestedState === 'lock-requested' ? 'unlocked' : 'locked');
+      this._requestedTimeoutTimer = setTimeout(() => {
+        if (this._currentVisualState === requestedState) {
+          this._currentVisualState = this._requestedFallbackState || this._currentVisualState;
+          this._animationPhase = 'idle';
+          this._pendingUserAction = null;
+          this._updateVisuals();
+        }
+        this._requestedTimeoutTimer = null;
+      }, timeout);
+    }
+  }
+
+  _clearRequestedTimeout() {
+    if (this._requestedTimeoutTimer) {
+      clearTimeout(this._requestedTimeoutTimer);
+      this._requestedTimeoutTimer = null;
+    }
   }
 
   /**
@@ -444,8 +693,10 @@ class SexyLockCard extends HTMLElement {
           ${ring}
         </g>
         <g class="lock-group" transform-origin="${centerX} ${centerY}">
-          ${semiCircle1}
-          ${semiCircle2}
+          <g class="lock-center-group">
+            ${semiCircle1}
+            ${semiCircle2}
+          </g>
         </g>
       </svg>
     `;
@@ -459,17 +710,43 @@ class SexyLockCard extends HTMLElement {
     
     if (!this._hass || !this._config) return;
     
+    const now = performance?.now ? performance.now() : Date.now();
+    const debounceMs = Math.max(120, this._config?.tap_debounce || 350);
+    if (now - this._lastTapTimestamp < debounceMs) {
+      return;
+    }
+    this._lastTapTimestamp = now;
+
     const entity = this._hass.states[this._config.entity];
     if (!entity) return;
-    
-    // Handle tap action
-    if (this._config.tap_action.action === 'toggle') {
-      this._toggleLock(entity);
-    } else if (this._config.tap_action.action === 'more-info') {
-      this._showMoreInfo();
-    } else if (this._config.tap_action.action === 'call-service') {
-      this._callService(this._config.tap_action);
+
+    if (!this._isDoorClosed()) {
+      this._showInteractionBlockedFeedback();
+      return;
     }
+
+    const normalizedState = this._normalizeState(this._currentVisualState);
+    const stableTapStates = new Set(['locked', 'unlocked']);
+    if (!stableTapStates.has(normalizedState)) {
+      this._showInteractionBlockedFeedback();
+      return;
+    }
+
+    const allowState = normalizedState === 'locked'
+      ? this._config.allow_locked_action !== false
+      : this._config.allow_unlocked_action !== false;
+    if (!allowState) {
+      this._showInteractionBlockedFeedback();
+      return;
+    }
+
+    const actionConfig = this._getTapActionForState(normalizedState);
+    if (!actionConfig) {
+      this._showInteractionBlockedFeedback();
+      return;
+    }
+
+    this._executeTapAction(actionConfig, entity, normalizedState);
   }
 
   /**
@@ -488,9 +765,10 @@ class SexyLockCard extends HTMLElement {
   /**
    * Toggle lock state with optimistic UI
    */
-  _toggleLock(entity) {
+  _toggleLock(entity, visualStateOverride = null) {
     const currentState = entity.state;
-    const isLocked = currentState === 'locked';
+    const visualState = visualStateOverride || this._normalizeState(this._currentVisualState);
+    const isLocked = visualState === 'locked';
     
     // Set user-initiated flag
     this._userInitiated = true;
@@ -500,6 +778,7 @@ class SexyLockCard extends HTMLElement {
     const requestedState = isLocked ? 'unlock-requested' : 'lock-requested';
     this._currentVisualState = requestedState;
     this._animationPhase = 'transitioning';
+    this._startRequestedTimeout(requestedState);
     this._updateVisuals();
     
     // Call the service
@@ -692,8 +971,13 @@ class SexyLockCard extends HTMLElement {
         }
         
         .lock-group {
-          transition: transform var(--rotation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform var(--rotation-duration) var(--rotation-timing-function, cubic-bezier(0.4, 0, 0.2, 1));
           transform-origin: 50px 50px;
+        }
+
+        .lock-center-group {
+          transform-origin: 50px 50px;
+          transition: opacity 220ms ease, transform 220ms ease;
         }
         
         /* Rotation states */
@@ -710,7 +994,7 @@ class SexyLockCard extends HTMLElement {
         }
         
         .semi-circle {
-          transition: transform var(--slide-duration) cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform var(--slide-duration) var(--slide-timing-function, cubic-bezier(0.4, 0, 0.2, 1));
         }
         
         /* Slide is controlled ONLY by locked vs unlocked state */
@@ -757,6 +1041,11 @@ class SexyLockCard extends HTMLElement {
         .lock-icon-container.unknown,
         .lock-icon-container.unavailable {
           color: var(--lock-unknown-color);
+        }
+
+        .lock-icon-container.door-open .lock-center-group {
+          opacity: 0;
+          transform: scale(0.85);
         }
         
         /* SVG ring styling */
@@ -840,6 +1129,86 @@ class SexyLockCard extends HTMLElement {
           flex: 0 0 auto;
           min-height: 0;
         }
+
+        .battery-indicator {
+          position: absolute;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.2rem;
+          padding: 0;
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--battery-indicator-color, #ffb74d);
+          z-index: 2;
+          min-width: auto;
+          pointer-events: none;
+        }
+
+        .battery-indicator[hidden] {
+          display: none;
+        }
+
+        .battery-indicator[data-position="top-right"] {
+          top: 0.75rem;
+          right: 0.75rem;
+        }
+
+        .battery-indicator[data-position="top-left"] {
+          top: 0.75rem;
+          left: 0.75rem;
+        }
+
+        .battery-indicator[data-position="bottom-right"] {
+          bottom: 0.75rem;
+          right: 0.75rem;
+        }
+
+        .battery-indicator[data-position="bottom-left"] {
+          bottom: 0.75rem;
+          left: 0.75rem;
+        }
+
+        .battery-body {
+          position: relative;
+          width: 14px;
+          height: 38px;
+          border-radius: 5px;
+          border: 1.25px solid rgba(255, 255, 255, 0.35);
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.06);
+          flex-shrink: 0;
+        }
+
+        .battery-fill {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 100%;
+          height: 50%;
+          background: var(--battery-indicator-color, #ffb74d);
+          transition: height 150ms ease, background 150ms ease;
+        }
+
+        .battery-cap {
+          position: absolute;
+          top: -5px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 9px;
+          height: 3px;
+          border-radius: 2px;
+          background: var(--battery-indicator-color, #ffb74d);
+        }
+
+        .battery-text {
+          text-align: center;
+          color: var(--battery-indicator-color, #ffb74d);
+        }
+
+        .lock-card.interaction-blocked {
+          animation: shake 0.4s ease;
+        }
         
         .hidden {
           display: none;
@@ -847,6 +1216,13 @@ class SexyLockCard extends HTMLElement {
       </style>
       
       <ha-card class="lock-card">
+        <div class="battery-indicator" data-position="${this._config?.battery_indicator_position || 'top-right'}" hidden>
+          <div class="battery-body" aria-hidden="true">
+            <div class="battery-fill"></div>
+            <span class="battery-cap"></span>
+          </div>
+          <span class="battery-text">--%</span>
+        </div>
         <div class="lock-content">
           <div class="lock-icon-container">
             <div class="lock-icon-wrapper${directionClass}">
@@ -877,6 +1253,8 @@ class SexyLockCard extends HTMLElement {
     card.addEventListener('mouseup', () => {
       if (pressTimer) clearTimeout(pressTimer);
     });
+
+    this._updateBatteryIndicator();
   }
 
   /**
@@ -903,6 +1281,11 @@ class SexyLockCard extends HTMLElement {
       clearTimeout(this._animationTimer);
       this._animationTimer = null;
     }
+    if (this._interactionFeedbackTimer) {
+      clearTimeout(this._interactionFeedbackTimer);
+      this._interactionFeedbackTimer = null;
+    }
+    this._clearRequestedTimeout();
   }
 }
 
@@ -1102,30 +1485,30 @@ class SexyLockCardEditor extends HTMLElement {
         <div class="section-content door-section">
           <div class="option">
             <label>Door / Contact Entity</label>
-            <div class="description">Binary sensor that reports the door or contact state</div>
+            <div class="description">Binary sensor that reports whether the door is closed</div>
             <div class="door-entity-input"></div>
           </div>
+        </div>
 
+        <div class="section-header expandable">Battery Indicator (Optional)</div>
+        <div class="section-content battery-section">
           <div class="option">
-            <label>Door Label</label>
-            <div class="description">Override name shown for the door status badge (optional)</div>
-            <div class="door-name-input"></div>
+            <label>Battery Entity</label>
+            <div class="description">Sensor that reports battery percentage (0-100)</div>
+            <div class="battery-entity-input"></div>
           </div>
-
           <div class="option">
-            <div class="switch-row">
-              <div class="label-wrapper">
-                <label>Show Door Status</label>
-                <div class="description">Display a badge or text when a door entity is configured</div>
-              </div>
-              <div class="door-show-status-switch"></div>
+            <label>Show Threshold</label>
+            <div class="description">Only show the indicator when the battery is at or below this percentage</div>
+            <div class="number-input">
+              <div class="battery-threshold-input" style="flex: 1;"></div>
+              <span>%</span>
             </div>
           </div>
-
           <div class="option">
-            <label>Door Alert Mode</label>
-            <div class="description">Choose how the card reacts when the door is open</div>
-            <div class="door-alert-mode-selector"></div>
+            <label>Indicator Position</label>
+            <div class="description">Choose which corner displays the warning pill</div>
+            <div class="battery-position-selector"></div>
           </div>
         </div>
         
@@ -1230,6 +1613,47 @@ class SexyLockCardEditor extends HTMLElement {
             <div class="description">Action to perform when card is held</div>
             <div class="hold-action-selector"></div>
           </div>
+
+          <div class="option">
+            <label>Tap Action (Locked State)</label>
+            <div class="description">Overrides tap behavior when the lock is currently locked</div>
+            <div class="tap-locked-action-selector"></div>
+          </div>
+
+          <div class="option">
+            <label>Tap Action (Unlocked State)</label>
+            <div class="description">Overrides tap behavior when the lock is currently unlocked</div>
+            <div class="tap-unlocked-action-selector"></div>
+          </div>
+
+          <div class="option">
+            <div class="switch-row">
+              <div class="label-wrapper">
+                <label>Enable Tap When Locked</label>
+                <div class="description">Allow taps to trigger actions while the lock reports locked</div>
+              </div>
+              <div class="allow-locked-switch"></div>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="switch-row">
+              <div class="label-wrapper">
+                <label>Enable Tap When Unlocked</label>
+                <div class="description">Allow taps to trigger actions while the lock reports unlocked</div>
+              </div>
+              <div class="allow-unlocked-switch"></div>
+            </div>
+          </div>
+
+          <div class="option">
+            <label>Requested State Timeout</label>
+            <div class="description">Milliseconds before a requested state snaps back if no update arrives</div>
+            <div class="number-input">
+              <div class="requested-timeout-input" style="flex: 1;"></div>
+              <span>ms</span>
+            </div>
+          </div>
         </div>
         
 
@@ -1318,47 +1742,60 @@ class SexyLockCardEditor extends HTMLElement {
       doorEntityContainer.appendChild(doorEntitySelector);
     }
 
-    // Door name input
-    const doorNameInput = document.createElement('ha-selector');
-    doorNameInput.hass = this._hass;
-    doorNameInput.selector = { text: {} };
-    doorNameInput.value = this._config.door_name || '';
-    doorNameInput.label = 'Door Label';
-    doorNameInput.addEventListener('value-changed', this._doorNameChanged.bind(this));
-    this._doorNameInput = doorNameInput;
-    const doorNameContainer = this.shadowRoot.querySelector('.door-name-input');
-    if (doorNameContainer) {
-      doorNameContainer.appendChild(doorNameInput);
+    // Battery entity selector
+    const batteryEntitySelector = document.createElement('ha-selector');
+    batteryEntitySelector.hass = this._hass;
+    batteryEntitySelector.selector = {
+      entity: {
+        domain: ['sensor', 'binary_sensor'],
+        device_class: ['battery']
+      }
+    };
+    batteryEntitySelector.value = this._config.battery_entity || '';
+    batteryEntitySelector.label = 'Battery Entity';
+    batteryEntitySelector.addEventListener('value-changed', this._batteryEntityChanged.bind(this));
+    this._batteryEntitySelector = batteryEntitySelector;
+    const batteryEntityContainer = this.shadowRoot.querySelector('.battery-entity-input');
+    if (batteryEntityContainer) {
+      batteryEntityContainer.appendChild(batteryEntitySelector);
     }
 
-    // Door show status switch
-    const doorShowStatusSwitch = document.createElement('ha-switch');
-    doorShowStatusSwitch.checked = this._config.door_show_status !== false;
-    doorShowStatusSwitch.addEventListener('change', this._doorShowStatusChanged.bind(this));
-    this._doorShowStatusSwitch = doorShowStatusSwitch;
-    const doorShowStatusContainer = this.shadowRoot.querySelector('.door-show-status-switch');
-    if (doorShowStatusContainer) {
-      doorShowStatusContainer.appendChild(doorShowStatusSwitch);
+    const batteryThresholdInput = document.createElement('ha-selector');
+    batteryThresholdInput.hass = this._hass;
+    batteryThresholdInput.selector = {
+      number: {
+        min: 0,
+        max: 100,
+        step: 1,
+        mode: 'box'
+      }
+    };
+    batteryThresholdInput.value = this._config.battery_threshold !== undefined ? this._config.battery_threshold : 35;
+    batteryThresholdInput.addEventListener('value-changed', this._batteryThresholdChanged.bind(this));
+    this._batteryThresholdInput = batteryThresholdInput;
+    const batteryThresholdContainer = this.shadowRoot.querySelector('.battery-threshold-input');
+    if (batteryThresholdContainer) {
+      batteryThresholdContainer.appendChild(batteryThresholdInput);
     }
 
-    // Door alert mode selector
-    const doorAlertSelector = document.createElement('ha-selector');
-    doorAlertSelector.hass = this._hass;
-    doorAlertSelector.selector = {
+    const batteryPositionSelector = document.createElement('ha-selector');
+    batteryPositionSelector.hass = this._hass;
+    batteryPositionSelector.selector = {
       select: {
         options: [
-          { value: 'none', label: 'None (informational only)' },
-          { value: 'warn', label: 'Warn when door open' },
-          { value: 'block', label: 'Warn and block lock toggle' }
+          { value: 'top-right', label: 'Top Right' },
+          { value: 'top-left', label: 'Top Left' },
+          { value: 'bottom-right', label: 'Bottom Right' },
+          { value: 'bottom-left', label: 'Bottom Left' }
         ]
       }
     };
-    doorAlertSelector.value = this._config.door_alert_mode || 'none';
-    doorAlertSelector.addEventListener('value-changed', this._doorAlertModeChanged.bind(this));
-    this._doorAlertModeSelector = doorAlertSelector;
-    const doorAlertContainer = this.shadowRoot.querySelector('.door-alert-mode-selector');
-    if (doorAlertContainer) {
-      doorAlertContainer.appendChild(doorAlertSelector);
+    batteryPositionSelector.value = this._config.battery_indicator_position || 'top-right';
+    batteryPositionSelector.addEventListener('value-changed', this._batteryPositionChanged.bind(this));
+    this._batteryPositionSelector = batteryPositionSelector;
+    const batteryPositionContainer = this.shadowRoot.querySelector('.battery-position-selector');
+    if (batteryPositionContainer) {
+      batteryPositionContainer.appendChild(batteryPositionSelector);
     }
 
     // Animation duration
@@ -1420,6 +1857,55 @@ class SexyLockCardEditor extends HTMLElement {
     
     const tapActionContainer = this.shadowRoot.querySelector('.tap-action-selector');
     tapActionContainer.appendChild(tapActionSelector);
+
+    const tapLockedSelector = document.createElement('ha-selector');
+    tapLockedSelector.hass = this._hass;
+    tapLockedSelector.selector = { ui_action: { } };
+    tapLockedSelector.value = this._config.tap_action_locked || this._config.tap_action || { action: 'toggle' };
+    tapLockedSelector.addEventListener('value-changed', this._tapLockedActionChanged.bind(this));
+    this._tapLockedActionSelector = tapLockedSelector;
+    const tapLockedContainer = this.shadowRoot.querySelector('.tap-locked-action-selector');
+    tapLockedContainer.appendChild(tapLockedSelector);
+
+    const tapUnlockedSelector = document.createElement('ha-selector');
+    tapUnlockedSelector.hass = this._hass;
+    tapUnlockedSelector.selector = { ui_action: { } };
+    tapUnlockedSelector.value = this._config.tap_action_unlocked || this._config.tap_action || { action: 'toggle' };
+    tapUnlockedSelector.addEventListener('value-changed', this._tapUnlockedActionChanged.bind(this));
+    this._tapUnlockedActionSelector = tapUnlockedSelector;
+    const tapUnlockedContainer = this.shadowRoot.querySelector('.tap-unlocked-action-selector');
+    tapUnlockedContainer.appendChild(tapUnlockedSelector);
+
+    const allowLockedSwitch = document.createElement('ha-switch');
+    allowLockedSwitch.checked = this._config.allow_locked_action !== false;
+    allowLockedSwitch.addEventListener('change', this._allowLockedActionChanged.bind(this));
+    this._allowLockedSwitch = allowLockedSwitch;
+    const allowLockedContainer = this.shadowRoot.querySelector('.allow-locked-switch');
+    allowLockedContainer.appendChild(allowLockedSwitch);
+
+    const allowUnlockedSwitch = document.createElement('ha-switch');
+    allowUnlockedSwitch.checked = this._config.allow_unlocked_action !== false;
+    allowUnlockedSwitch.addEventListener('change', this._allowUnlockedActionChanged.bind(this));
+    this._allowUnlockedSwitch = allowUnlockedSwitch;
+    const allowUnlockedContainer = this.shadowRoot.querySelector('.allow-unlocked-switch');
+    allowUnlockedContainer.appendChild(allowUnlockedSwitch);
+
+    const requestedTimeoutInput = document.createElement('ha-selector');
+    requestedTimeoutInput.hass = this._hass;
+    requestedTimeoutInput.selector = {
+      number: {
+        min: 500,
+        max: 15000,
+        step: 250,
+        mode: 'box',
+        unit_of_measurement: 'ms',
+      }
+    };
+    requestedTimeoutInput.value = this._config.requested_timeout !== undefined ? this._config.requested_timeout : 15000;
+    requestedTimeoutInput.addEventListener('value-changed', this._requestedTimeoutChanged.bind(this));
+    this._requestedTimeoutInput = requestedTimeoutInput;
+    const requestedTimeoutContainer = this.shadowRoot.querySelector('.requested-timeout-input');
+    requestedTimeoutContainer.appendChild(requestedTimeoutInput);
 
     // Hold action selector
     const holdActionSelector = document.createElement('ha-selector');
@@ -1546,14 +2032,14 @@ class SexyLockCardEditor extends HTMLElement {
     if (this._doorEntitySelector) {
       this._doorEntitySelector.value = this._config.door_entity || '';
     }
-    if (this._doorNameInput) {
-      this._doorNameInput.value = this._config.door_name || '';
+    if (this._batteryEntitySelector) {
+      this._batteryEntitySelector.value = this._config.battery_entity || '';
     }
-    if (this._doorShowStatusSwitch) {
-      this._doorShowStatusSwitch.checked = this._config.door_show_status !== false;
+    if (this._batteryThresholdInput) {
+      this._batteryThresholdInput.value = this._config.battery_threshold !== undefined ? this._config.battery_threshold : 35;
     }
-    if (this._doorAlertModeSelector) {
-      this._doorAlertModeSelector.value = this._config.door_alert_mode || 'none';
+    if (this._batteryPositionSelector) {
+      this._batteryPositionSelector.value = this._config.battery_indicator_position || 'top-right';
     }
     if (this._animationDurationInput) {
       this._animationDurationInput.value = this._config.animation_duration || 400;
@@ -1576,8 +2062,23 @@ class SexyLockCardEditor extends HTMLElement {
     if (this._tapActionSelector) {
       this._tapActionSelector.value = this._config.tap_action || { action: 'toggle' };
     }
+    if (this._tapLockedActionSelector) {
+      this._tapLockedActionSelector.value = this._config.tap_action_locked || this._config.tap_action || { action: 'toggle' };
+    }
+    if (this._tapUnlockedActionSelector) {
+      this._tapUnlockedActionSelector.value = this._config.tap_action_unlocked || this._config.tap_action || { action: 'toggle' };
+    }
     if (this._holdActionSelector) {
       this._holdActionSelector.value = this._config.hold_action || { action: 'more-info' };
+    }
+    if (this._allowLockedSwitch) {
+      this._allowLockedSwitch.checked = this._config.allow_locked_action !== false;
+    }
+    if (this._allowUnlockedSwitch) {
+      this._allowUnlockedSwitch.checked = this._config.allow_unlocked_action !== false;
+    }
+    if (this._requestedTimeoutInput) {
+      this._requestedTimeoutInput.value = this._config.requested_timeout !== undefined ? this._config.requested_timeout : 4000;
     }
     Object.entries(this._colorInputs).forEach(([key, input]) => {
       if (input) {
@@ -1659,11 +2160,44 @@ class SexyLockCardEditor extends HTMLElement {
     this._updateConfig(newConfig);
   }
 
+  _tapLockedActionChanged(ev) {
+    if (!this._config) return;
+    const newConfig = { ...this._config, tap_action_locked: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
+  _tapUnlockedActionChanged(ev) {
+    if (!this._config) return;
+    const newConfig = { ...this._config, tap_action_unlocked: ev.detail.value };
+    this._updateConfig(newConfig);
+  }
+
   _holdActionChanged(ev) {
     if (!this._config) return;
     
     const newConfig = { ...this._config, hold_action: ev.detail.value };
     this._updateConfig(newConfig);
+  }
+
+  _allowLockedActionChanged(ev) {
+    if (!this._config) return;
+    const newConfig = { ...this._config, allow_locked_action: ev.target.checked };
+    this._updateConfig(newConfig);
+  }
+
+  _allowUnlockedActionChanged(ev) {
+    if (!this._config) return;
+    const newConfig = { ...this._config, allow_unlocked_action: ev.target.checked };
+    this._updateConfig(newConfig);
+  }
+
+  _requestedTimeoutChanged(ev) {
+    if (!this._config) return;
+    const value = ev.detail.value;
+    if (typeof value === 'number' && value >= 500 && value <= 15000) {
+      const newConfig = { ...this._config, requested_timeout: value };
+      this._updateConfig(newConfig);
+    }
   }
 
   _doorEntityChanged(ev) {
@@ -1673,28 +2207,26 @@ class SexyLockCardEditor extends HTMLElement {
     this._updateConfig(newConfig);
   }
 
-  _doorNameChanged(ev) {
+  _batteryEntityChanged(ev) {
     if (!this._config) return;
     const value = ev.detail.value;
-    const newConfig = { ...this._config };
-    if (value) {
-      newConfig.door_name = value;
-    } else {
-      delete newConfig.door_name;
+    const newConfig = { ...this._config, battery_entity: value || null };
+    this._updateConfig(newConfig);
+  }
+
+  _batteryThresholdChanged(ev) {
+    if (!this._config) return;
+    const value = ev.detail.value;
+    if (typeof value === 'number' && value >= 0 && value <= 100) {
+      const newConfig = { ...this._config, battery_threshold: value };
+      this._updateConfig(newConfig);
     }
-    this._updateConfig(newConfig);
   }
 
-  _doorShowStatusChanged(ev) {
+  _batteryPositionChanged(ev) {
     if (!this._config) return;
-    const newConfig = { ...this._config, door_show_status: ev.target.checked };
-    this._updateConfig(newConfig);
-  }
-
-  _doorAlertModeChanged(ev) {
-    if (!this._config) return;
-    const value = ev.detail.value || 'none';
-    const newConfig = { ...this._config, door_alert_mode: value };
+    const value = ev.detail.value || 'top-right';
+    const newConfig = { ...this._config, battery_indicator_position: value };
     this._updateConfig(newConfig);
   }
   
@@ -1774,7 +2306,7 @@ window.customCards.push({
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 1.2.5 ',
+  '%c SEXY-LOCK-CARD %c 2.0.0 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
