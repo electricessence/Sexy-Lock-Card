@@ -210,6 +210,7 @@ class SexyLockCard extends HTMLElement {
   _triggerTransition(oldState, newState) {
     const from = this._normalizeState(oldState);
     const to = this._normalizeState(newState);
+    const previousVisualState = this._currentVisualState;
     
     // Clear any existing animation
     if (this._animationTimer) {
@@ -236,7 +237,9 @@ class SexyLockCard extends HTMLElement {
       this._updateVisuals();
     }
 
-    if (!hadPendingAction && ((from === 'locked' && to === 'unlocked') || (from === 'unlocked' && to === 'locked'))) {
+    const visualMatchedFrom = previousVisualState === from;
+    const isDirectStableFlip = (from === 'locked' && to === 'unlocked') || (from === 'unlocked' && to === 'locked');
+    if (!hadPendingAction && visualMatchedFrom && isDirectStableFlip) {
       this._directRotationTarget = to;
     } else if (from !== to) {
       this._directRotationTarget = null;
@@ -277,6 +280,15 @@ class SexyLockCard extends HTMLElement {
     const normalized = this._normalizeState(entity.state);
     const stableStates = new Set(['locked', 'unlocked', 'jammed', 'unknown', 'unavailable']);
     if (!stableStates.has(normalized)) {
+      return;
+    }
+
+    const isRequestedState = this._currentVisualState === 'lock-requested' || this._currentVisualState === 'unlock-requested';
+    const pendingLock = this._pendingUserAction === 'lock';
+    const pendingUnlock = this._pendingUserAction === 'unlock';
+    const isRepeatOfSourceState = (pendingLock && normalized === 'unlocked') || (pendingUnlock && normalized === 'locked');
+    if (isRequestedState && isRepeatOfSourceState) {
+      // Ignore duplicate source-state updates while we wait for the actual transition
       return;
     }
 
@@ -981,6 +993,7 @@ class SexyLockCard extends HTMLElement {
         
         .lock-ring-group {
           transform-origin: 50px 50px;
+          isolation: isolate; /* confine blend effects to the ring */
         }
         
         .lock-group {
