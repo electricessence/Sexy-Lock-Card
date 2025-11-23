@@ -883,22 +883,6 @@ class SexyLockCard extends HTMLElement {
           min-height: 0 !important;
           min-width: 0 !important;
         }
-
-        :host([data-layout-mode="masonry"]) {
-          height: auto;
-        }
-
-        :host([data-layout-mode="masonry"]) ha-card,
-        :host([data-layout-mode="masonry"]) .lock-card,
-        :host([data-layout-mode="masonry"]) .lock-content,
-        :host([data-layout-mode="masonry"]) .lock-icon-container {
-          height: auto;
-        }
-
-        :host([data-layout-mode="masonry"]) .lock-card {
-          min-height: var(--sexy-lock-card-masonry-min-height, 260px);
-        }
-        
         ha-card {
           display: flex;
           flex-direction: column;
