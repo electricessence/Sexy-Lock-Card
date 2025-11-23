@@ -27,6 +27,7 @@ class SexyLockCard extends HTMLElement {
     this._lastStableActionState = null;
     this._lastTapTimestamp = 0;
     this._directRotationTarget = null;
+    this._layoutMode = 'auto';
   }
   
   /**
@@ -848,6 +849,7 @@ class SexyLockCard extends HTMLElement {
    */
   _render() {
     if (!this.shadowRoot) return;
+    this._detectLayoutMode();
     
     const directionClass = this._config?.unlock_direction === 'clockwise' ? ' flip-horizontal' : '';
     
@@ -881,6 +883,21 @@ class SexyLockCard extends HTMLElement {
         .lock-icon-container {
           min-height: 0 !important;
           min-width: 0 !important;
+        }
+
+        :host([data-layout-mode="masonry"]) {
+          height: auto;
+        }
+
+        :host([data-layout-mode="masonry"]) ha-card,
+        :host([data-layout-mode="masonry"]) .lock-card,
+        :host([data-layout-mode="masonry"]) .lock-content,
+        :host([data-layout-mode="masonry"]) .lock-icon-container {
+          height: auto;
+        }
+
+        :host([data-layout-mode="masonry"]) .lock-card {
+          min-height: var(--sexy-lock-card-masonry-min-height, 260px);
         }
         
         ha-card {
@@ -1320,6 +1337,7 @@ class SexyLockCard extends HTMLElement {
    * Lifecycle: Element added to DOM
    */
   connectedCallback() {
+    this._detectLayoutMode();
     if (!this.shadowRoot.querySelector('.lock-card')) {
       this._render();
     }
@@ -1338,6 +1356,15 @@ class SexyLockCard extends HTMLElement {
       this._interactionFeedbackTimer = null;
     }
     this._clearRequestedTimeout();
+  }
+
+  _detectLayoutMode() {
+    const masonryView = this.closest('hui-masonry-view');
+    const newMode = masonryView ? 'masonry' : 'modern';
+    if (newMode !== this._layoutMode) {
+      this._layoutMode = newMode;
+      this.setAttribute('data-layout-mode', newMode);
+    }
   }
 }
 
