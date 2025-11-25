@@ -5,6 +5,8 @@
  * @license MIT
  */
 
+let sexyLockCardInstanceCounter = 0;
+
 class SexyLockCard extends HTMLElement {
   constructor() {
     super();
@@ -27,6 +29,7 @@ class SexyLockCard extends HTMLElement {
     this._lastStableActionState = null;
     this._lastTapTimestamp = 0;
     this._directRotationTarget = null;
+    this._instanceId = ++sexyLockCardInstanceCounter;
   }
   
   /**
@@ -656,6 +659,7 @@ class SexyLockCard extends HTMLElement {
     const gap = 12; // Gap width in viewBox units
     const ringRadius = 45; // Ring radius - much larger than lock pieces (max size is 45)
     const ringWidth = 8; // Ring thickness in viewBox units (slightly thicker)
+    const maskId = `lock-ring-mask-${this._instanceId}`;
     
     // Calculate chord endpoints for the gap
     const halfGap = gap / 2;
@@ -664,21 +668,14 @@ class SexyLockCard extends HTMLElement {
     // Ring as single filled path (donut shape using fill-rule)
     const outerRadius = ringRadius + (ringWidth / 2);
     const innerRadius = ringRadius - (ringWidth / 2);
-    const ringPath = `M ${centerX},${centerY - outerRadius}
-               A ${outerRadius},${outerRadius} 0 1,1 ${centerX},${centerY + outerRadius}
-               A ${outerRadius},${outerRadius} 0 1,1 ${centerX},${centerY - outerRadius}
-               Z
-               M ${centerX},${centerY - innerRadius}
-               A ${innerRadius},${innerRadius} 0 1,0 ${centerX},${centerY + innerRadius}
-               A ${innerRadius},${innerRadius} 0 1,0 ${centerX},${centerY - innerRadius}
-               Z`;
-    
     const ring = `
-      <path class="lock-ring-base" 
-            d="${ringPath}"
-            fill="currentColor"
-            fill-rule="evenodd"
-            opacity="0.6"/>
+      <circle class="lock-ring-base"
+              cx="${centerX}"
+              cy="${centerY}"
+              r="${outerRadius}"
+              fill="currentColor"
+              opacity="0.6"
+              mask="url(#${maskId})"/>
       <g class="lock-ring-gradient-group">
         <circle class="lock-ring-gradient"
                 cx="${centerX}"
@@ -724,6 +721,14 @@ class SexyLockCard extends HTMLElement {
             <stop offset="75%" style="stop-color: rgba(255, 255, 255, 0.35); stop-opacity: 1" />
             <stop offset="100%" style="stop-color: rgba(255, 255, 255, 0.1); stop-opacity: 1" />
           </linearGradient>
+          <mask id="${maskId}" maskUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="${viewBoxSize}" height="${viewBoxSize}" fill="white" />
+            <circle class="lock-ring-inner-mask"
+                    cx="${centerX}"
+                    cy="${centerY}"
+                    r="${innerRadius}"
+                    fill="black" />
+          </mask>
           <filter id="glow">
             <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
             <feMerge>
@@ -1004,6 +1009,16 @@ class SexyLockCard extends HTMLElement {
         .lock-ring-group {
           transform-origin: 50px 50px;
           isolation: isolate; /* confine blend effects to the ring */
+        }
+
+        .lock-ring-inner-mask {
+          transform-origin: 50px 50px;
+          transform-box: fill-box;
+          transition: transform 400ms cubic-bezier(0, 0, 0, 1);
+        }
+
+        .lock-icon-container.door-open .lock-ring-inner-mask {
+          transform: scale(0.9);
         }
         
         .lock-group {
