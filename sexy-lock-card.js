@@ -1013,7 +1013,7 @@ class SexyLockCard extends HTMLElement {
 
         .lock-ring-inner-mask {
           transform-origin: 50px 50px;
-          transform-box: fill-box;
+          transform-box: view-box;
           transition: transform 400ms cubic-bezier(0, 0, 0, 1);
         }
 
