@@ -1,5 +1,5 @@
 /**
- * Unit Tests for Sexy Lock Card State Machine
+ * Unit Tests for Door Sense Card State Machine
  */
 
 // Color codes for terminal output
@@ -24,7 +24,7 @@ class TestRunner {
   }
 
   async run() {
-    console.log(`\n${colors.blue}🧪 Running Sexy Lock Card Tests${colors.reset}\n`);
+    console.log(`\n${colors.blue}🧪 Running Door Sense Card Tests${colors.reset}\n`);
     
     for (const test of this.tests) {
       try {

@@ -1,8 +1,8 @@
 {
-  "name": "sexy-lock-card",
+  "name": "door-sense-card",
   "version": "2.0.1",
-  "description": "HACS-ready animated lock card for Home Assistant with door sensor gating, per-state tap actions, and low-battery indicator",
-  "main": "sexy-lock-card.js",
+  "description": "HACS-ready animated door sense card for Home Assistant with door sensor gating, per-state tap actions, and low-battery indicator",
+  "main": "door-sense-card.js",
   "scripts": {
     "test": "node test/run-tests.js",
     "serve": "pnpm dlx http-server -p 8000 -o test.html",
@@ -20,14 +20,14 @@
     "tap-actions",
     "smart-home"
   ],
-  "author": "Sexy Lock Card Contributors",
+  "author": "Door Sense Card Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/electricessence/Sexy-Lock-Card.git"
+    "url": "https://github.com/electricessence/Door-Sense-Card.git"
   },
   "bugs": {
-    "url": "https://github.com/electricessence/Sexy-Lock-Card/issues"
+    "url": "https://github.com/electricessence/Door-Sense-Card/issues"
   },
-  "homepage": "https://github.com/electricessence/Sexy-Lock-Card#readme"
+  "homepage": "https://github.com/electricessence/Door-Sense-Card#readme"
 }

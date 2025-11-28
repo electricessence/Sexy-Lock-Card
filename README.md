@@ -1,4 +1,4 @@
-# Sexy Lock Card
+# Door Sense Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 ![Version](https://img.shields.io/badge/version-2.0.1-blue)
@@ -32,15 +32,15 @@ A polished Lovelace card that treats your locks like first-class citizens—door
 
 ### HACS (recommended)
 
-1. Open **HACS → Frontend** and search for "Sexy Lock Card" (or add this repo as a custom source once).
+1. Open **HACS → Frontend** and search for "Door Sense Card" (or add this repo as a custom source once).
 2. Download/install, then restart Home Assistant if prompted.
 3. The resource is registered automatically—just add the card to a dashboard.
 
 ### Manual
 
-1. Grab `sexy-lock-card.js` from the [latest release](https://github.com/electricessence/Sexy-Lock-Card/releases).
-2. Copy it to `/config/www/sexy-lock-card.js`.
-3. Add a Lovelace resource pointing to `/local/sexy-lock-card.js` (type **JavaScript Module**).
+1. Grab `door-sense-card.js` from the [latest release](https://github.com/electricessence/Door-Sense-Card/releases).
+2. Copy it to `/config/www/door-sense-card.js`.
+3. Add a Lovelace resource pointing to `/local/door-sense-card.js` (type **JavaScript Module**).
 4. Clear cache (`Ctrl+Shift+R` or `Cmd+Shift+R`).
 
 Need a walkthrough? See [QUICKSTART.md](QUICKSTART.md).
@@ -48,7 +48,7 @@ Need a walkthrough? See [QUICKSTART.md](QUICKSTART.md).
 ## Quick Start
 
 ```yaml
-type: custom:sexy-lock-card
+type: custom:door-sense-card
 entity: lock.front_door
 door_entity: binary_sensor.front_door_contact   # optional
 battery_entity: sensor.front_door_lock_battery # optional
@@ -80,7 +80,7 @@ All other legacy options (custom colors, animation durations, slide offset, grad
 
 ## License
 
-MIT © Sexy Lock Card contributors.
+MIT © Door Sense Card contributors.
 - 🎨 Animated lock icon with 6 visual states
 - ⚡ Lightweight vanilla JS Web Component
 - 📱 Mobile-friendly with long-press support
@@ -106,10 +106,10 @@ If you find this useful, consider:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/electricessence/Sexy-Lock-Card/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/electricessence/Sexy-Lock-Card/discussions)
+- **Issues**: [GitHub Issues](https://github.com/electricessence/Door-Sense-Card/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/electricessence/Door-Sense-Card/discussions)
 - **Home Assistant Community**: [Forum Thread](https://community.home-assistant.io/)
 
 ---
 
-**Enjoy your sexy animated locks! 🔐✨**
+**Enjoy your door-aware animated locks! 🔐✨**

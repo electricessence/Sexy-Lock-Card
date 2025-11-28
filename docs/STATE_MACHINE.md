@@ -1,8 +1,8 @@
-# State Machine Documentation
+﻿# State Machine Documentation
 
 ## Overview
 
-The Sexy Lock Card implements a sophisticated state machine that handles lock state transitions with smooth animations. This document explains the internal logic and transition rules.
+The Door Sense Card implements a sophisticated state machine that handles lock state transitions with smooth animations. This document explains the internal logic and transition rules.
 
 ## State Model
 
@@ -50,38 +50,38 @@ The card tracks animation state through phases:
 When the lock entity provides transitional states, the card uses them directly:
 
 ```
-Entity State → Visual State
-─────────────────────────────
-locked       → locked
-unlocked     → unlocked
-locking      → locking (with animation)
-unlocking    → unlocking (with animation)
-jammed       → jammed (with shake)
-unknown      → unknown (with breathe)
+Entity State â†’ Visual State
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+locked       â†’ locked
+unlocked     â†’ unlocked
+locking      â†’ locking (with animation)
+unlocking    â†’ unlocking (with animation)
+jammed       â†’ jammed (with shake)
+unknown      â†’ unknown (with breathe)
 ```
 
 ### 2. Synthetic Transition Generation
 
-When the lock entity jumps directly between states (e.g., `locked` → `unlocked`), the card generates a smooth transition:
+When the lock entity jumps directly between states (e.g., `locked` â†’ `unlocked`), the card generates a smooth transition:
 
 ```
 User Action: Unlock
-─────────────────────────────────────────────
-Time: 0ms      → Visual: locked
-Time: 0ms      → Start transition
-Time: 200ms    → Visual: unlocking (midpoint)
-Time: 400ms    → Visual: unlocked
-Time: 400ms    → Animation complete
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Time: 0ms      â†’ Visual: locked
+Time: 0ms      â†’ Start transition
+Time: 200ms    â†’ Visual: unlocking (midpoint)
+Time: 400ms    â†’ Visual: unlocked
+Time: 400ms    â†’ Animation complete
 ```
 
 ```
 User Action: Lock
-─────────────────────────────────────────────
-Time: 0ms      → Visual: unlocked
-Time: 0ms      → Start transition
-Time: 200ms    → Visual: locking (midpoint)
-Time: 400ms    → Visual: locked
-Time: 400ms    → Animation complete
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Time: 0ms      â†’ Visual: unlocked
+Time: 0ms      â†’ Start transition
+Time: 200ms    â†’ Visual: locking (midpoint)
+Time: 400ms    â†’ Visual: locked
+Time: 400ms    â†’ Animation complete
 ```
 
 ### 3. Manual Change Detection
@@ -89,12 +89,12 @@ Time: 400ms    → Animation complete
 When the lock state changes without a user action (e.g., someone manually turns the lock), the card still animates:
 
 ```
-External Change: locked → unlocked
-─────────────────────────────────────────────
-Detection      → State jump detected
-Phase 1        → Animate to "unlocking"
-Phase 2        → Animate to "unlocked"
-Duration       → 400ms total (200ms per phase)
+External Change: locked â†’ unlocked
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Detection      â†’ State jump detected
+Phase 1        â†’ Animate to "unlocking"
+Phase 2        â†’ Animate to "unlocked"
+Duration       â†’ 400ms total (200ms per phase)
 ```
 
 ## Transition Decision Matrix
@@ -105,32 +105,32 @@ The card uses this logic to determine if a midpoint animation is needed:
 
 ```javascript
 FROM        TO          MIDPOINT?   MIDPOINT STATE
-────────────────────────────────────────────────────
-locked   → unlocked     YES         unlocking
-locked   → unlocking    NO          (direct)
-locked   → locking      NO          (direct)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+locked   â†’ unlocked     YES         unlocking
+locked   â†’ unlocking    NO          (direct)
+locked   â†’ locking      NO          (direct)
 
-unlocked → locked       YES         locking
-unlocked → locking      NO          (direct)
-unlocked → unlocking    NO          (direct)
+unlocked â†’ locked       YES         locking
+unlocked â†’ locking      NO          (direct)
+unlocked â†’ unlocking    NO          (direct)
 
-locking  → unlocked     YES         unlocking
-locking  → unlocking    NO          (direct)
-locking  → locked       NO          (direct)
+locking  â†’ unlocked     YES         unlocking
+locking  â†’ unlocking    NO          (direct)
+locking  â†’ locked       NO          (direct)
 
-unlocking → locked      YES         locking
-unlocking → locking     NO          (direct)
-unlocking → unlocked    NO          (direct)
+unlocking â†’ locked      YES         locking
+unlocking â†’ locking     NO          (direct)
+unlocking â†’ unlocked    NO          (direct)
 
-jammed   → any          NO          (direct)
-unknown  → any          NO          (direct)
+jammed   â†’ any          NO          (direct)
+unknown  â†’ any          NO          (direct)
 ```
 
 ### Midpoint State Selection
 
 ```
-Target is "locked" or "locking"  → Midpoint = "locking"
-Target is "unlocked" or "unlocking" → Midpoint = "unlocking"
+Target is "locked" or "locking"  â†’ Midpoint = "locking"
+Target is "unlocked" or "unlocking" â†’ Midpoint = "unlocking"
 ```
 
 ## Animation Timeline
@@ -139,61 +139,61 @@ Target is "unlocked" or "unlocking" → Midpoint = "unlocking"
 
 ```
 Timeline (400ms animation_duration)
-═══════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-0ms     ┃ User taps card
-        ┃ Current: locked
-        ┃ Target: unlocked
-        ┃ Decision: Needs midpoint animation
-        ┃
-        ├─→ Phase 1 starts
-        ┃   Visual state: unlocking
-        ┃   Animation: rotate-pulse
-        ┃   Color: yellow
-        ┃
-200ms   ┃ Phase 1 completes
-        ┃
-        ├─→ Phase 2 starts
-        ┃   Visual state: unlocked
-        ┃   Animation: rotate-pulse (finishing)
-        ┃   Color: red
-        ┃
-400ms   ┃ Phase 2 completes
-        ┃
-        ├─→ Set to idle
-        ┃   Visual state: unlocked
-        ┃   Animation: none
-        ┃   Color: red
-        ┃
-        ▼ Complete
+0ms     â”ƒ User taps card
+        â”ƒ Current: locked
+        â”ƒ Target: unlocked
+        â”ƒ Decision: Needs midpoint animation
+        â”ƒ
+        â”œâ”€â†’ Phase 1 starts
+        â”ƒ   Visual state: unlocking
+        â”ƒ   Animation: rotate-pulse
+        â”ƒ   Color: yellow
+        â”ƒ
+200ms   â”ƒ Phase 1 completes
+        â”ƒ
+        â”œâ”€â†’ Phase 2 starts
+        â”ƒ   Visual state: unlocked
+        â”ƒ   Animation: rotate-pulse (finishing)
+        â”ƒ   Color: red
+        â”ƒ
+400ms   â”ƒ Phase 2 completes
+        â”ƒ
+        â”œâ”€â†’ Set to idle
+        â”ƒ   Visual state: unlocked
+        â”ƒ   Animation: none
+        â”ƒ   Color: red
+        â”ƒ
+        â–¼ Complete
 ```
 
 ### Example: Entity Provides "locking" State
 
 ```
 Timeline (entity has transitional state)
-═══════════════════════════════════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-0ms     ┃ User taps card
-        ┃ HA service: lock.lock
-        ┃
-~50ms   ┃ Entity state: locking
-        ┃ Decision: Direct mapping (no midpoint)
-        ┃
-        ├─→ Immediate update
-        ┃   Visual state: locking
-        ┃   Animation: rotate-pulse
-        ┃   Color: yellow
-        ┃
-~2000ms ┃ Entity state: locked (actual lock completes)
-        ┃ Decision: Direct mapping
-        ┃
-        ├─→ Immediate update
-        ┃   Visual state: locked
-        ┃   Animation: none
-        ┃   Color: green
-        ┃
-        ▼ Complete
+0ms     â”ƒ User taps card
+        â”ƒ HA service: lock.lock
+        â”ƒ
+~50ms   â”ƒ Entity state: locking
+        â”ƒ Decision: Direct mapping (no midpoint)
+        â”ƒ
+        â”œâ”€â†’ Immediate update
+        â”ƒ   Visual state: locking
+        â”ƒ   Animation: rotate-pulse
+        â”ƒ   Color: yellow
+        â”ƒ
+~2000ms â”ƒ Entity state: locked (actual lock completes)
+        â”ƒ Decision: Direct mapping
+        â”ƒ
+        â”œâ”€â†’ Immediate update
+        â”ƒ   Visual state: locked
+        â”ƒ   Animation: none
+        â”ƒ   Color: green
+        â”ƒ
+        â–¼ Complete
 ```
 
 ## CSS Animation Details
@@ -246,54 +246,54 @@ Iteration: infinite
 ## State Machine Flow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  Entity State Change                     │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-            ┌────────────────┐
-            │ Normalize      │
-            │ State          │
-            └────────┬───────┘
-                     │
-                     ▼
-            ┌────────────────┐
-            │ Same as        │ YES
-            │ previous?      ├────────→ (do nothing)
-            └────────┬───────┘
-                     │ NO
-                     ▼
-            ┌────────────────┐
-            │ Needs          │ NO    ┌──────────────┐
-            │ midpoint?      ├───────→│ Direct       │
-            └────────┬───────┘        │ transition   │
-                     │ YES            └──────────────┘
-                     ▼
-            ┌────────────────┐
-            │ Get midpoint   │
-            │ state          │
-            └────────┬───────┘
-                     │
-                     ▼
-            ┌────────────────┐
-            │ Phase 1:       │
-            │ Animate to     │
-            │ midpoint       │
-            └────────┬───────┘
-                     │
-                     │ (animation_duration / 2)
-                     ▼
-            ┌────────────────┐
-            │ Phase 2:       │
-            │ Animate to     │
-            │ target         │
-            └────────┬───────┘
-                     │
-                     │ (animation_duration / 2)
-                     ▼
-            ┌────────────────┐
-            │ Mark as idle   │
-            └────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                  Entity State Change                     â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Normalize      â”‚
+            â”‚ State          â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Same as        â”‚ YES
+            â”‚ previous?      â”œâ”€â”€â”€â”€â”€â”€â”€â”€â†’ (do nothing)
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚ NO
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Needs          â”‚ NO    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ midpoint?      â”œâ”€â”€â”€â”€â”€â”€â”€â†’â”‚ Direct       â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚ transition   â”‚
+                     â”‚ YES            â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Get midpoint   â”‚
+            â”‚ state          â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Phase 1:       â”‚
+            â”‚ Animate to     â”‚
+            â”‚ midpoint       â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚
+                     â”‚ (animation_duration / 2)
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Phase 2:       â”‚
+            â”‚ Animate to     â”‚
+            â”‚ target         â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                     â”‚
+                     â”‚ (animation_duration / 2)
+                     â–¼
+            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+            â”‚ Mark as idle   â”‚
+            â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ## Edge Cases
@@ -311,7 +311,7 @@ Result: Smooth continuation to new target state
 
 ```
 Example:
-  Time 0ms:   locked → unlocked transition starts
+  Time 0ms:   locked â†’ unlocked transition starts
   Time 100ms: Entity reports "locking"
   
 Action: 
@@ -320,7 +320,7 @@ Action:
   Visual state: locking
 ```
 
-### 3. Unknown → Known Transition
+### 3. Unknown â†’ Known Transition
 
 ```
 Strategy: Direct transition (no midpoint)
@@ -386,7 +386,7 @@ _shouldAnimateThroughMidpoint(from, to) {
 
 ### Test 1: Basic Toggle
 ```
-Action: Tap card (locked → unlocked)
+Action: Tap card (locked â†’ unlocked)
 Expected: Smooth animation through "unlocking" midpoint
 Duration: ~400ms
 ```
@@ -427,3 +427,4 @@ The state machine provides:
 - **Performance**: Efficient CSS-based animations
 
 This architecture ensures a polished, professional user experience for any Home Assistant lock entity.
+

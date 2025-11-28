@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sexy Lock Card - Local Testing</title>
+  <title>Door Sense Card - Local Testing</title>
   <style>
     :root {
       /* Home Assistant theme variables */
@@ -76,7 +76,7 @@
       position: relative;
     }
     
-    sexy-lock-card {
+    door-sense-card {
       display: block;
       height: 100%;
     }
@@ -165,13 +165,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>🔐 Sexy Lock Card - Local Testing</h1>
+    <h1>🔐 Door Sense Card - Local Testing</h1>
     
     <div class="test-area">
       <div class="card-wrapper">
         <h3>Card Instance (Resizable)</h3>
         <div class="card-container">
-          <sexy-lock-card id="testCard"></sexy-lock-card>
+          <door-sense-card id="testCard"></door-sense-card>
         </div>
       </div>
       
@@ -249,7 +249,7 @@ Animation Phase: idle</pre>
   
   <script type="module">
     // Import the card
-    import './sexy-lock-card.js';
+    import './door-sense-card.js';
     
     // Mock Home Assistant
     window.mockHass = {
@@ -476,3 +476,4 @@ Last Updated: ${new Date().toLocaleTimeString()}`;
   </script>
 </body>
 </html>
+

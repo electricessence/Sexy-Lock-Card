@@ -1,4 +1,4 @@
-# Sexy Lock Card
+# Door Sense Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 ![Version](https://img.shields.io/badge/version-2.0.1-blue)
@@ -6,7 +6,7 @@
 
 A highly polished, animated custom Lovelace card for Home Assistant that displays smart lock states with smooth visual transitions.
 
-![Sexy Lock Card Demo](https://via.placeholder.com/600x400.png?text=Sexy+Lock+Card+Demo)
+![Door Sense Card Demo](https://via.placeholder.com/600x400.png?text=Door+Sense+Card+Demo)
 
 ## ✨ Features
 
@@ -37,29 +37,29 @@ A highly polished, animated custom Lovelace card for Home Assistant that display
 2. Click on "Frontend"
 3. Click the 3-dot menu in the top right
 4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/electricessence/Sexy-Lock-Card`
+5. Add this repository URL: `https://github.com/electricessence/Door-Sense-Card`
 6. Category: `Lovelace`
 7. Click "Add"
-8. Click "Install" on the Sexy Lock Card
+8. Click "Install" on the Door Sense Card
 9. Restart Home Assistant
 10. Clear browser cache (Ctrl+Shift+R)
 
 ### Manual Installation
 
-1. Download `sexy-lock-card.js` from the [latest release](https://github.com/electricessence/Sexy-Lock-Card/releases)
-2. Copy it to `<config>/www/sexy-lock-card.js`
+1. Download `Door-Sense-Card.js` from the [latest release](https://github.com/electricessence/Door-Sense-Card/releases)
+2. Copy it to `<config>/www/Door-Sense-Card.js`
 3. Add the resource to Lovelace:
    
    **Via UI:**
    - Go to **Settings** → **Dashboards** → **Resources**
    - Click **Add Resource**
-   - URL: `/local/sexy-lock-card.js`
+   - URL: `/local/Door-Sense-Card.js`
    - Resource type: **JavaScript Module**
 
    **Via YAML:**
    ```yaml
    resources:
-     - url: /local/sexy-lock-card.js
+     - url: /local/Door-Sense-Card.js
        type: module
    ```
 
@@ -71,14 +71,14 @@ A highly polished, animated custom Lovelace card for Home Assistant that display
 ### Basic Configuration
 
 ```yaml
-type: custom:sexy-lock-card
+type: custom:Door-Sense-Card
 entity: lock.front_door
 ```
 
 ### Full Configuration
 
 ```yaml
-type: custom:sexy-lock-card
+type: custom:Door-Sense-Card
 entity: lock.front_door
 name: Front Door Lock
 show_name: true
@@ -131,19 +131,19 @@ tap_action_locked:
 type: grid
 columns: 2
 cards:
-  - type: custom:sexy-lock-card
+  - type: custom:Door-Sense-Card
     entity: lock.front_door
     name: Front Door
     
-  - type: custom:sexy-lock-card
+  - type: custom:Door-Sense-Card
     entity: lock.back_door
     name: Back Door
     
-  - type: custom:sexy-lock-card
+  - type: custom:Door-Sense-Card
     entity: lock.garage_door
     name: Garage
     
-  - type: custom:sexy-lock-card
+  - type: custom:Door-Sense-Card
     entity: lock.side_gate
     name: Side Gate
 ```
@@ -151,7 +151,7 @@ cards:
 ### Custom Animation Speed
 
 ```yaml
-type: custom:sexy-lock-card
+type: custom:Door-Sense-Card
 entity: lock.front_door
 animation_duration: 300  # Faster animations
 ```
@@ -159,7 +159,7 @@ animation_duration: 300  # Faster animations
 ### Custom Actions
 
 ```yaml
-type: custom:sexy-lock-card
+type: custom:Door-Sense-Card
 entity: lock.front_door
 tap_action_locked:
   action: call-service
@@ -183,7 +183,7 @@ Override colors using CSS variables in your theme:
 
 ```yaml
 # In your theme configuration
-sexy-lock-card:
+Door-Sense-Card:
   --lock-locked-color: '#00ff00'
   --lock-unlocked-color: '#ff0000'
   --lock-transitioning-color: '#ffaa00'
@@ -241,9 +241,10 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 - [Home Assistant Community](https://community.home-assistant.io/)
 - [HACS](https://hacs.xyz/)
-- [Report a Bug](https://github.com/electricessence/Sexy-Lock-Card/issues)
-- [Request a Feature](https://github.com/electricessence/Sexy-Lock-Card/issues)
+- [Report a Bug](https://github.com/electricessence/Door-Sense-Card/issues)
+- [Request a Feature](https://github.com/electricessence/Door-Sense-Card/issues)
 
 ---
 
 **Made with ❤️ for the Home Assistant community**
+

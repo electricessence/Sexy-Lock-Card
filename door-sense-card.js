@@ -1,13 +1,13 @@
 /**
- * Sexy Lock Card - Animated Lock Card for Home Assistant
+ * Door Sense Card - Animated Lock Card for Home Assistant
  * A custom Lovelace card with smooth state transitions and animations
  * 
  * @license MIT
  */
 
-let sexyLockCardInstanceCounter = 0;
+let doorSenseCardInstanceCounter = 0;
 
-class SexyLockCard extends HTMLElement {
+class DoorSenseCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -29,7 +29,7 @@ class SexyLockCard extends HTMLElement {
     this._lastStableActionState = null;
     this._lastTapTimestamp = 0;
     this._directRotationTarget = null;
-    this._instanceId = ++sexyLockCardInstanceCounter;
+    this._instanceId = ++doorSenseCardInstanceCounter;
   }
   
   /**
@@ -124,7 +124,7 @@ class SexyLockCard extends HTMLElement {
    * This enables the UI card editor in Home Assistant
    */
   static getConfigElement() {
-    return document.createElement('sexy-lock-card-editor');
+    return document.createElement('door-sense-card-editor');
   }
 
   /**
@@ -140,7 +140,7 @@ class SexyLockCard extends HTMLElement {
     const friendlyName = lockEntity && hass?.states?.[lockEntity]?.attributes?.friendly_name;
     return {
       entity: lockEntity || 'lock.front_door',
-      name: friendlyName || 'Sexy Lock',
+      name: friendlyName || 'Door Sense',
       show_name: true,
       show_state: true,
       animation_duration: 400,
@@ -1357,12 +1357,12 @@ class SexyLockCard extends HTMLElement {
 }
 
 // Define the custom element
-customElements.define('sexy-lock-card', SexyLockCard);
+customElements.define('door-sense-card', DoorSenseCard);
 
 /**
  * Visual Card Editor for Home Assistant UI
  */
-class SexyLockCardEditor extends HTMLElement {
+class DoorSenseCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -2370,21 +2370,21 @@ class SexyLockCardEditor extends HTMLElement {
 }
 
 // Define the editor element
-customElements.define('sexy-lock-card-editor', SexyLockCardEditor);
+customElements.define('door-sense-card-editor', DoorSenseCardEditor);
 
 // Register with Home Assistant card picker
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'sexy-lock-card',
-  name: 'Sexy Lock Card',
+  type: 'door-sense-card',
+  name: 'Door Sense Card',
   description: 'Animated lock card with smooth state transitions',
   preview: true,
-  documentationURL: 'https://github.com/electricessence/Sexy-Lock-Card',
+  documentationURL: 'https://github.com/electricessence/Door-Sense-Card',
 });
 
 // Log successful load
 console.info(
-  '%c SEXY-LOCK-CARD %c 2.0.1 ',
+  '%c DOOR-SENSE-CARD %c 2.0.1 ',
   'color: white; background: #4caf50; font-weight: 700;',
   'color: #4caf50; background: white; font-weight: 700;'
 );
